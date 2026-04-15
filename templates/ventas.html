@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Ventas - Select Salud</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #004a99; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; }
+        th { background: #333; color: white; }
+        .back { display: block; margin-top: 20px; color: #004a99; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Historial de Ventas</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha/Hora</th>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Vendedor</th>
+                    <th>Sucursal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td>{{ v[0].strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td><strong>{{ v[1] }}</strong></td>
+                    <td>{{ v[2] }}</td>
+                    <td>{{ v[4] }}</td>
+                    <td>{{ v[5] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/" class="back">← Volver al Inventario</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Salud - Inventario</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f4f7f6; }
+        .critical-stock { 
+            background-color: #ffcccc !important; 
+            color: #c0392b !important; 
+            font-weight: bold; 
+        }
+        .warning-label {
+            color: #c0392b;
+            font-size: 0.8em;
+            display: block;
+        }
+    </style>
+</head>
+<body class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🏥 Select Salud - Control de Inventario</h1>
+        <div>
+            <span class="badge bg-primary">Usuario: {{ nombre }} ({{ rol }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h3>Existencias en Almacén</h3>
+            <table class="table table-hover mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock Actual</th>
+                        <th>Sucursal</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in productos %}
+                    <tr class="{% if p[1] < 10 %}critical-stock{% endif %}">
+                        <td>{{ p[0] }}</td>
+                        <td>
+                            {{ p[1] }}
+                            {% if p[1] < 10 %}
+                                <span class="warning-label">⚠️ STOCK CRÍTICO</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ p[2] }}</td>
+                        <td>
+                            <form action="{{ url_for('agregar_carrito', lote_id=p[3]) }}" method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="nombre" value="{{ p[0] }}">
+                                <input type="hidden" name="sucursal" value="{{ p[2] }}">
+                                <input type="number" name="cantidad" value="1" min="1" max="{{ p[1] }}" class="form-control form-control-sm" style="width: 70px;">
+                                <button type="submit" class="btn btn-success btn-sm" {% if p[1] <= 0 %}disabled{% endif %}>
+                                    🛒 Agregar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-primary">
+        <div class="card-body">
+            <h3>🛒 Carrito de Venta Actual</h3>
+            {% if session['carrito'] %}
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Sucursal</th>
+                            <th>Cant.</th>
+                            <th>Precio</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in session['carrito'] %}
+                        <tr>
+                            <td>{{ item.nombre }}</td>
+                            <td>{{ item.sucursal }}</td>
+                            <td>{{ item.cantidad }}</td>
+                            <td>${{ item.precio }}</td>
+                            <td>${{ item.cantidad * item.precio }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('limpiar_carrito') }}" class="btn btn-secondary">Vaciar Carrito</a>
+                    <form action="{{ url_for('confirmar_venta') }}" method="POST">
+                        <button type="submit" class="btn btn-primary">✅ Confirmar Venta</button>
+                    </form>
+                </div>
+            {% else %}
+                <p class="text-muted">El carrito está vacío. Agrega productos para iniciar una venta.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('ver_ventas') }}" class="btn btn-info text-white">Ver Historial de Ventas</a>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // Si el HTML contiene el texto de advertencia, lanzamos el Popup
+            if (document.body.innerText.includes("⚠️ STOCK CRÍTICO")) {
+                console.log("Alerta de stock activada");
+                // Solo una alerta para no molestar tanto
+                setTimeout(() => {
+                    alert("🚨 ALERTA DE INVENTARIO: Algunos productos tienen menos de 10 unidades. Favor de revisar las filas marcadas en rojo.");
+                }, 500);
+            }
+        };
+    </script>
+
+</body>
+</html>
