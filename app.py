@@ -87,7 +87,7 @@ def index():
         JOIN sucursales s ON l.id_sucursal = s.id_sucursal
         WHERE l.stock_actual > 0
     '''
-    
+#CONSULTA GENERAL   
     if sucursal_f == 'General':
         cur.execute(query + " ORDER BY s.nombre_sucursal ASC")
     else:
