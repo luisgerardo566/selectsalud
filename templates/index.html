@@ -3,126 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Salud - Inventario</title>
+    <title>Módulo de Ventas - Select Salud</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background-color: #f4f7f6; }
-        .critical-stock { 
-            background-color: #ffcccc !important; 
-            color: #c0392b !important; 
-            font-weight: bold; 
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        
+        /* Encabezado Estándar */
+        .header-custom { 
+            background-color: #2c3e50; 
+            color: white; 
+            padding: 25px; 
+            border-radius: 0 0 20px 20px; 
+            margin-bottom: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        .warning-label {
-            color: #c0392b;
-            font-size: 0.8em;
-            display: block;
+
+        /* Botón de regreso */
+        .btn-admin-back {
+            background-color: #ffffff; color: #2c3e50; border: 2px solid #3498db;
+            border-radius: 30px; font-weight: 600; padding: 8px 20px;
+            transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
         }
+        .btn-admin-back:hover { background-color: #3498db; color: white; transform: translateX(-5px); }
+
+        /* Tarjetas y Tablas */
+        .card-venta { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .critical-stock { background-color: #fff5f5 !important; color: #c0392b !important; }
+        .expired { color: #e74c3c; font-weight: bold; text-decoration: underline; }
+        
+        .table-carrito { background-color: #f8fbff; border-radius: 10px; }
+        .sticky-cart { position: sticky; top: 20px; }
     </style>
 </head>
-<body class="container py-4">
+<body class="container">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>🏥 Select Salud - Control de Inventario</h1>
+    <div class="d-flex justify-content-between align-items-center py-3">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-admin-back shadow-sm">
+            <span>🏠</span> Volver al Panel
+        </a>
+        <div class="text-end">
+            <span class="badge bg-dark px-3 py-2">👤 {{ nombre }} ({{ rol }})</span>
+        </div>
+    </div>
+
+    <div class="header-custom d-flex justify-content-between align-items-center shadow">
         <div>
-            <span class="badge bg-primary">Usuario: {{ nombre }} ({{ rol }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</a>
+            <h1 class="h2 mb-0">🛒 Módulo de Ventas</h1>
+            <p class="mb-0 opacity-75">Sucursal seleccionada: <strong>{{ sucursal }}</strong></p>
+        </div>
+        <div class="text-end">
+            <a href="{{ url_for('ver_ventas') }}" class="btn btn-outline-light btn-sm">📊 Historial Detallado</a>
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h3>Existencias en Almacén</h3>
-            <table class="table table-hover mt-3">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Producto</th>
-                        <th>Stock Actual</th>
-                        <th>Sucursal</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in productos %}
-                    <tr class="{% if p[1] < 10 %}critical-stock{% endif %}">
-                        <td>{{ p[0] }}</td>
-                        <td>
-                            {{ p[1] }}
-                            {% if p[1] < 10 %}
-                                <span class="warning-label">⚠️ STOCK CRÍTICO</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ p[2] }}</td>
-                        <td>
-                            <form action="{{ url_for('agregar_carrito', lote_id=p[3]) }}" method="POST" class="d-flex gap-2">
-                                <input type="hidden" name="nombre" value="{{ p[0] }}">
-                                <input type="hidden" name="sucursal" value="{{ p[2] }}">
-                                <input type="number" name="cantidad" value="1" min="1" max="{{ p[1] }}" class="form-control form-control-sm" style="width: 70px;">
-                                <button type="submit" class="btn btn-success btn-sm" {% if p[1] <= 0 %}disabled{% endif %}>
-                                    🛒 Agregar
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card shadow-sm border-primary">
-        <div class="card-body">
-            <h3>🛒 Carrito de Venta Actual</h3>
-            {% if session['carrito'] %}
-                <table class="table align-middle">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Sucursal</th>
-                            <th>Cant.</th>
-                            <th>Precio</th>
-                            <th>Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in session['carrito'] %}
-                        <tr>
-                            <td>{{ item.nombre }}</td>
-                            <td>{{ item.sucursal }}</td>
-                            <td>{{ item.cantidad }}</td>
-                            <td>${{ item.precio }}</td>
-                            <td>${{ item.cantidad * item.precio }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ url_for('limpiar_carrito') }}" class="btn btn-secondary">Vaciar Carrito</a>
-                    <form action="{{ url_for('confirmar_venta') }}" method="POST">
-                        <button type="submit" class="btn btn-primary">✅ Confirmar Venta</button>
-                    </form>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card card-venta p-4 mb-5">
+                <h4 class="text-primary mb-4">💊 Existencias detalladas por Lote</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Lote</th>
+                                <th>Sucursal</th>
+                                <th>Stock</th>
+                                <th>Caducidad</th>
+                                <th>Precio</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in productos %}
+                            <tr class="{% if p[1] < 10 %}critical-stock{% endif %}">
+                                <td><span class="fw-bold">{{ p[0] }}</span></td>
+                                <td><span class="badge bg-secondary">#{{ p[6] }}</span></td>
+                                <td><small class="text-muted">{{ p[2] }}</small></td>
+                                <td>
+                                    <span class="badge {% if p[1] < 10 %}bg-danger{% else %}bg-dark{% endif %}">
+                                        {{ p[1] }}
+                                    </span>
+                                </td>
+                                <td class="{% if p[4] < hoy %}expired{% endif %} small">
+                                    {{ p[4] }}
+                                </td>
+                                <td class="fw-bold">${{ "{:,.2f}".format(p[5]) }}</td>
+                                <td>
+                                    <form action="{{ url_for('agregar_carrito', lote_id=p[3]) }}" method="POST" class="d-flex gap-2">
+                                        <input type="hidden" name="nombre" value="{{ p[0] }}">
+                                        <input type="hidden" name="precio" value="{{ p[5] }}">
+                                        <input type="hidden" name="sucursal_origen" value="{{ p[2] }}">
+                                        <input type="number" name="cantidad" value="1" min="1" max="{{ p[1] }}" class="form-control form-control-sm" style="width: 65px;">
+                                        <button type="submit" class="btn btn-success btn-sm shadow-sm">➕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            {% else %}
-                <p class="text-muted">El carrito está vacío. Agrega productos para iniciar una venta.</p>
-            {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card card-venta shadow sticky-cart">
+                <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="mb-0">📋 Carrito Actual</h5>
+                </div>
+                <div class="card-body">
+                    {% if session['carrito'] %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle table-carrito mb-3">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Ítem</th>
+                                    <th>Cant.</th>
+                                    <th class="text-end">Subtotal</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_venta = 0 %}
+                                {% for item in session['carrito'] %}
+                                <tr>
+                                    <td><small class="fw-bold">{{ item.nombre }}</small></td>
+                                    <td>{{ item.cantidad }}</td>
+                                    <td class="text-end text-success">${{ "{:,.2f}".format(item.cantidad * item.precio) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('eliminar_item', index=loop.index0) }}" class="text-danger ms-2">✖</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info py-2 small mb-3">
+                        📍 Operación en: <strong>{{ session['carrito'][0]['sucursal_origen'] }}</strong>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <form action="{{ url_for('confirmar_venta') }}" method="POST">
+                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                                FINALIZAR VENTA
+                            </button>
+                        </form>
+                        <a href="{{ url_for('limpiar_carrito') }}" class="btn btn-link btn-sm text-secondary">Vaciar Carrito</a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <div style="font-size: 3rem; opacity: 0.2;">🛒</div>
+                        <p>No hay productos en el carrito</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="mt-4 text-center">
-        <a href="{{ url_for('ver_ventas') }}" class="btn btn-info text-white">Ver Historial de Ventas</a>
-    </div>
-
-    <script>
-        window.onload = function() {
-            // Si el HTML contiene el texto de advertencia, lanzamos el Popup
-            if (document.body.innerText.includes("⚠️ STOCK CRÍTICO")) {
-                console.log("Alerta de stock activada");
-                // Solo una alerta para no molestar tanto
-                setTimeout(() => {
-                    alert("🚨 ALERTA DE INVENTARIO: Algunos productos tienen menos de 10 unidades. Favor de revisar las filas marcadas en rojo.");
-                }, 500);
-            }
-        };
-    </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

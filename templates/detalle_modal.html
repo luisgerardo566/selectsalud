@@ -1,0 +1,51 @@
+<div class="modal-header bg-primary text-white">
+    <h5 class="modal-title" id="detalleVentaLabel">
+        <i class="fas fa-receipt me-2"></i>Detalle de Venta #{{ id_venta }}
+    </h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-end">Precio Unit.</th>
+                    <th class="text-end">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in detalles %}
+                <tr>
+                    <td>
+                        <span class="fw-bold text-dark">{{ detalle[0] }}</span>
+                        <br>
+                        <small class="text-muted">{{ detalle[4] if detalle[4] else '' }}</small>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary px-3">{{ detalle[1] }}</span>
+                    </td>
+                    <td class="text-end">${{ "{:,.2f}".format(detalle[2]) }}</td>
+                    <td class="text-end fw-bold">
+                        ${{ "{:,.2f}".format(detalle[3]) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-info">
+                    <td colspan="3" class="text-end fw-bold text-uppercase">Total de la Venta:</td>
+                    <td class="text-end fw-bold" style="font-size: 1.1rem;">
+                        ${{ "{:,.2f}".format(total_venta) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="modal-footer bg-light">
+    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+</div>
