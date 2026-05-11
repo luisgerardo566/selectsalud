@@ -6,7 +6,7 @@ from datetime import datetime, date
 app = Flask(__name__)
 app.secret_key = 'select_salud_v2_2026_final'
 
-# --- CONEXIÓN A DB ---
+# CONEXIÓN A DB 
 def get_db_connection():
     conn_str = "host='127.0.0.1' port='5432' dbname='db_selectSalud' user='postgres' password='123456'"
     try:
@@ -17,7 +17,7 @@ def get_db_connection():
         print(f"❌ Error de conexión: {e}")
         return None
 
-# --- ACCESO (LOGIN) ---
+#  ACCESO 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
@@ -49,44 +49,36 @@ def login():
         return render_template('login.html', error="Credenciales incorrectas")
     return render_template('login.html')
 
-# --- MENÚ PRINCIPAL (ADMIN) ---
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if 'user_id' not in session or session.get('rol') != 'Administrador':
         return redirect(url_for('login'))
     return render_template('admin.html', nombre=session['nombre'])
 
-# --- SELECTOR DE SUCURSAL ---
 @app.route('/selector/<tipo_flujo>')
 def mostrar_selector(tipo_flujo):
     if 'user_id' not in session: return redirect(url_for('login'))
     return render_template('seleccionar_sucursal.html', modo=tipo_flujo)
 
-# --- MANEJADOR DE DIRECCIONAMIENTO ---
 @app.route('/ir_a_tabla/<modo>/<sucursal>')
 def ir_a_tabla(modo, sucursal):
-    # 1. Guardamos la nueva sucursal seleccionada
     session['sucursal_seleccionada'] = sucursal
     
-    # 2. LIMPIEZA: Vaciamos el carrito para que no se mezclen productos de sedes distintas
     session['carrito'] = [] 
     session.modified = True
     
     if modo == 'Venta':
         return redirect(url_for('index'))
     return redirect(url_for('ver_inventario'))
-# --- VISTA DE PUNTO DE VENTA (Venta) ---
 @app.route('/')
 def index():
     if 'user_id' not in session: return redirect(url_for('login'))
     
-    # Recuperamos la sucursal del selector (por defecto 'General')
     sucursal_f = session.get('sucursal_seleccionada', 'General')
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Base de la consulta
     query = '''
         SELECT p.nombre, l.stock_actual, s.nombre_sucursal, l.id_lote, 
                l.fecha_caducidad, p.precio_venta, l.codigo_lote
@@ -96,25 +88,21 @@ def index():
         WHERE l.stock_actual > 0
     '''
     
-    # Si no es la vista General, filtramos por el nombre exacto de la DB
-    # En la ruta de index (venta) y la de inventario, cambia el execute por esto:
     if sucursal_f == 'General':
         cur.execute(query + " ORDER BY s.nombre_sucursal ASC")
     else:
-    # Usamos ILIKE y % para que encuentre el nombre aunque tenga espacios extra
         cur.execute(query + " AND s.nombre_sucursal ILIKE %s", (f"%{sucursal_f}%",))
 
     productos = cur.fetchall()
     cur.close()
     conn.close()
     
-    # Pasamos 'productos' y 'sucursal' al HTML
     return render_template('index.html', 
                            productos=productos, 
                            sucursal=sucursal_f, 
                            nombre=session.get('nombre'), 
                            hoy=date.today())
-# --- VISTA DE CONSULTA (Inventario) ---
+# (Inventario) 
 @app.route('/inventario')
 def ver_inventario():
     if 'user_id' not in session: return redirect(url_for('login'))
@@ -133,12 +121,10 @@ def ver_inventario():
     if sucursal_f == 'General':
         cur.execute(query + " ORDER BY s.nombre_sucursal ASC")
     else:
-    # Usamos ILIKE y % para que encuentre el nombre aunque tenga espacios extra
         cur.execute(query + " AND s.nombre_sucursal ILIKE %s", (f"%{sucursal_f}%",))
 
     productos = cur.fetchall()
     
-    # Calculamos el valor total para mostrarlo en el encabezado
     total_dinero = sum(p[1] * p[4] for p in productos)
     
     cur.close()
@@ -150,20 +136,17 @@ def ver_inventario():
                            total_dinero=total_dinero, 
                            hoy=date.today())
 
-# --- HISTORIAL DE VENTAS (Corregido para admin.html) ---
+# HISTORIAL DE VENTAS 
 @app.route('/ventas')
 def ver_ventas():
     if 'user_id' not in session: return redirect(url_for('login'))
     
-    # Capturamos filtros de la URL (si existen)
     sucursal_filtro = request.args.get('sucursal', '')
     producto_filtro = request.args.get('producto', '')
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # CONSULTA MAESTRO: Obtenemos una fila por cada ticket de venta
-    # Usamos DISTINCT y JOINS para poder filtrar por producto si es necesario
     query = '''
         SELECT DISTINCT v.id_venta, v.fecha_hora, u.nombre_usuario, s.nombre_sucursal, v.total
         FROM ventas v
@@ -200,9 +183,6 @@ def venta_detalle(id_venta):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # CONSULTA DETALLE CORREGIDA:
-    # Traemos Nombre[0], Cantidad[1], Precio[2], Subtotal[3] y Fórmula[4]
     cur.execute('''
         SELECT 
             p.nombre, 
@@ -218,46 +198,35 @@ def venta_detalle(id_venta):
     
     detalles = cur.fetchall()
     
-    # CALCULAMOS EL TOTAL: Sumamos el índice [3] de cada fila
+  
     total_venta = sum(fila[3] for fila in detalles)
     
     cur.close()
     conn.close()
-    
-    # Enviamos 'detalles', 'id_venta' y el nuevo 'total_venta'
     return render_template('detalle_modal.html', 
                            detalles=detalles, 
                            id_venta=id_venta, 
                            total_venta=total_venta)
-# --- GESTIÓN DE CARRITO ---
+# GESTIÓN DE CARRITO
 @app.route('/agregar_carrito/<int:lote_id>', methods=['POST'])
 def agregar_carrito(lote_id):
-    # 1. Asegurar que el carrito exista en la sesión
+    
     if 'carrito' not in session:
         session['carrito'] = []
     
     carrito = session['carrito']
     
-    # 2. Capturar los datos enviados desde el formulario (index.html)
     nombre_prod = request.form.get('nombre')
     precio_prod = float(request.form.get('precio'))
     cantidad_prod = int(request.form.get('cantidad'))
-    # Esta es la sucursal real del lote, no la de la sesión
     sucursal_real_lote = request.form.get('sucursal_origen')
 
-    # 3. VALIDACIÓN DE MEZCLA DE SUCURSALES
+   
     if len(carrito) > 0:
-        # Revisamos la sucursal del primer producto que ya está en el carrito
+    
         sucursal_en_carrito = carrito[0].get('sucursal_origen')
-        
-        # Si la sucursal del nuevo producto es distinta a la que ya está dentro
         if sucursal_real_lote != sucursal_en_carrito:
-            # Opción segura: No añadir y podrías enviar un mensaje de error
-            # Si prefieres que se limpie el carrito automáticamente, usa: session['carrito'] = []
             return redirect(url_for('index')) 
-
-    # 4. AÑADIR EL PRODUCTO AL CARRITO
-    # Guardamos 'sucursal_origen' para que la tabla temporal muestre el nombre real
     carrito.append({
         'lote_id': lote_id,
         'nombre': nombre_prod,
@@ -281,7 +250,6 @@ def limpiar_carrito():
 def eliminar_item(index):
     if 'carrito' in session:
         carrito = session['carrito']
-        # Verificamos que el índice exista en el carrito
         if 0 <= index < len(carrito):
             carrito.pop(index)
             session['carrito'] = carrito
@@ -320,25 +288,21 @@ def confirmar_venta():
         conn.close()
     return redirect(url_for('index'))
 
-# --- RUTA PARA VER EL CATÁLOGO ---
+
 @app.route('/catalogo')
 def ver_catalogo():
     if 'user_id' not in session: return redirect(url_for('login'))
     
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # 1. Traemos las categorías para el menú desplegable
     cur.execute("SELECT id_categoria, nombre_categoria FROM categorias ORDER BY nombre_categoria ASC")
     lista_categorias = cur.fetchall()
-    
-    # 2. Traemos las sucursales para el formulario de Lotes
     cur.execute("SELECT id_sucursal, nombre_sucursal FROM sucursales ORDER BY nombre_sucursal ASC")
     lista_sucursales = cur.fetchall()
     cur.execute("SELECT id_producto, nombre FROM productos ORDER BY nombre ASC")
     lista_productos = cur.fetchall()
     
-    # 3. Traemos las alertas (Trigger)
+    #  (Trigger)
     cur.execute("SELECT mensaje, fecha_alerta FROM alertas_inventario ORDER BY fecha_alerta DESC LIMIT 5")
     alertas = cur.fetchall()
     
@@ -351,12 +315,10 @@ def ver_catalogo():
                            lista_productos=lista_productos,
                            alertas=alertas)
 
-# --- RUTA PARA GUARDAR EL PRODUCTO (INSERT) ---
 @app.route('/agregar_producto', methods=['POST'])
 def agregar_producto():
     if 'user_id' not in session: return redirect(url_for('login'))
     
-    # Capturamos el ID numérico que viene del select
     id_categoria = request.form.get('id_categoria') 
     nombre = request.form.get('nombre')
     formula = request.form.get('formula')
@@ -366,7 +328,6 @@ def agregar_producto():
     cur = conn.cursor()
     
     try:
-        # Usamos id_categoria en el INSERT
         cur.execute("""
             INSERT INTO productos (id_categoria, nombre, formula, precio_venta) 
             VALUES (%s, %s, %s, %s)
@@ -384,13 +345,11 @@ def agregar_producto():
 @app.route('/agregar_lote', methods=['POST'])
 def agregar_lote():
     if 'user_id' not in session: return redirect(url_for('login'))
-    
-    # Capturamos todos los campos según la estructura de LTTT.PNG
     id_prod = request.form.get('id_producto')
     id_suc = request.form.get('id_sucursal')
     codigo = request.form.get('codigo')
     f_caducidad = request.form.get('fecha_caducidad')
-    stock = request.form.get('cantidad')  # Se mapea a stock_actual
+    stock = request.form.get('cantidad') 
     p_compra = request.form.get('precio')
     f_entrega = request.form.get('fecha_entrega')
     
@@ -398,7 +357,6 @@ def agregar_lote():
     cur = conn.cursor()
     
     try:
-        # INSERT exacto con los 7 campos de la tabla lotes
         cur.execute("""
             INSERT INTO lotes (id_producto, id_sucursal, codigo_lote, fecha_caducidad, stock_actual, precio_compra, fecha_entrega) 
             VALUES (%s, %s, %s, %s, %s, %s, %s)
