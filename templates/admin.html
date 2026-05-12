@@ -85,19 +85,22 @@
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark shadow">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <span class="me-2">🏥</span> SELECT SALUD
-            </a>
-            <div class="ms-auto d-flex align-items-center">
-                <span class="text-light me-3 d-none d-md-inline">Bienvenido, <strong>{{ nombre }}</strong></span>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
-                    Cerrar Sesión 🚪
-                </a>
-            </div>
+    <div class="container">
+        <div class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('index') }}">
+            <img src="{{ url_for('static', filename='img/selectSalud.png') }}" 
+                 alt="Logo Select Salud" 
+                 style="height: 40px; width: auto;" 
+                 class="me-2">
         </div>
-    </nav>
-
+        
+        <div class="ms-auto d-flex align-items-center">
+            <span class="text-light me-3 d-none d-md-inline">Bienvenido, <strong>{{ nombre }}</strong></span>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
+                Cerrar Sesión 
+            </a>
+        </div>
+    </div>
+</nav>
     <div class="container">
         <div class="header-section">
             <h1>Panel de Control Principal</h1>

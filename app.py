@@ -164,7 +164,6 @@ def ver_ventas():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Tu consulta original con los JOINs necesarios
     query = '''
         SELECT DISTINCT v.id_venta, v.fecha_hora, u.nombre_usuario, s.nombre_sucursal, v.total
         FROM ventas v
@@ -177,13 +176,11 @@ def ver_ventas():
     '''
     params = []
 
-    # --- LÓGICA DE PRIVACIDAD ---
     if rol_sesion == 'Farmaceutico':
-        # Isaac solo ve las ventas que ÉL hizo
+    
         query += " AND v.id_usuario = %s"
         params.append(user_id_sesion)
-    
-    # Mantener tus filtros de búsqueda ILIKE
+
     if sucursal_filtro:
         query += " AND s.nombre_sucursal ILIKE %s"
         params.append(f"%{sucursal_filtro}%")
@@ -196,7 +193,6 @@ def ver_ventas():
     cur.execute(query, params)
     ventas_maestro = cur.fetchall()
     
-    # Listado para el buscador de sucursales (puedes limitarlo también si quieres)
     cur.execute("SELECT nombre_sucursal FROM sucursales")
     listado_sucursales = [s[0] for s in cur.fetchall()]
     
