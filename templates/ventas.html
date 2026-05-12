@@ -9,11 +9,7 @@
         body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
         .header-custom { background-color: #2c3e50; color: white; padding: 25px; border-radius: 0 0 20px 20px; margin-bottom: 30px; }
         .table-container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .btn-admin-back {
-            background-color: #ffffff; color: #2c3e50; border: 2px solid #3498db;
-            border-radius: 30px; font-weight: 600; padding: 8px 20px;
-            transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
-        }
+        .btn-admin-back { background-color: #ffffff; color: #2c3e50; border: 2px solid #3498db; border-radius: 30px; font-weight: 600; padding: 8px 20px; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
         .btn-admin-back:hover { background-color: #3498db; color: white; transform: translateX(-5px); }
         .filter-section { background: #ebf2f7; padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 5px solid #3498db; }
     </style>
@@ -21,24 +17,31 @@
 <body class="container">
 
     <div class="py-3">
-        <a href="{{ url_for('admin_dashboard') }}" class="btn-admin-back shadow-sm">
+        {% if session.get('rol') == 'Administrador' %}
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
             <span>🏠</span> Volver al Panel Principal
         </a>
+        {% else %}
+        <a href="{{ url_for('ventas.index') }}" class="btn-admin-back shadow-sm">
+            <span>🛒</span> Volver a Ventas
+        </a>
+        {% endif %}
     </div>
 
     <div class="header-custom d-flex justify-content-between align-items-center shadow">
         <div>
-            <h1 class="h2 mb-0">📊 Historial Maestro de Ventas</h1>
+            <h1 class="h2 mb-0">📊 Historial de Ventas</h1>
             <p class="mb-0 opacity-75">Gestión centralizada de tickets y facturación</p>
         </div>
     </div>
 
     <div class="filter-section shadow-sm">
-        <form method="GET" action="{{ url_for('ver_ventas') }}" class="row g-3">
+        <form method="GET" action="{{ url_for('ventas.ver_ventas') }}" class="row g-3">
             <div class="col-md-4">
                 <label class="form-label small fw-bold text-uppercase">Buscar Producto</label>
                 <input type="text" name="producto" class="form-control" placeholder="Ej: Paracetamol" value="{{ request.args.get('producto', '') }}">
             </div>
+            {% if session.get('rol') == 'Administrador' %}
             <div class="col-md-4">
                 <label class="form-label small fw-bold text-uppercase">Filtrar por Sucursal</label>
                 <select name="sucursal" class="form-select">
@@ -48,6 +51,7 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
             <div class="col-md-4 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100 fw-bold">🔍 Aplicar Filtros</button>
             </div>
@@ -83,7 +87,6 @@
                 {% endfor %}
             </tbody>
         </table>
-        
         {% if not ventas %}
         <div class="text-center py-5">
             <h5 class="text-muted">No se encontraron ventas con los criterios seleccionados.</h5>
@@ -93,8 +96,7 @@
 
     <div class="modal fade" id="modalVenta" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content shadow-lg" id="contenedorModal">
-                </div>
+            <div class="modal-content shadow-lg" id="contenedorModal"></div>
         </div>
     </div>
 
@@ -105,8 +107,7 @@
                 .then(res => res.text())
                 .then(html => {
                     document.getElementById('contenedorModal').innerHTML = html;
-                    var myModal = new bootstrap.Modal(document.getElementById('modalVenta'));
-                    myModal.show();
+                    new bootstrap.Modal(document.getElementById('modalVenta')).show();
                 })
                 .catch(err => alert("Error al cargar el detalle: " + err));
         }

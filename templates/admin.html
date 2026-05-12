@@ -6,84 +6,19 @@
     <title>Panel Administrativo - Select Salud</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        :root {
-            --primary-dark: #2c3e50;
-            --accent-blue: #3498db;
-            --bg-light: #f4f7f6;
-        }
-
-        body { 
-            background-color: var(--bg-light); 
-            font-family: 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .navbar {
-            background-color: var(--primary-dark) !important;
-            padding: 15px 0;
-            border-bottom: 4px solid var(--accent-blue);
-        }
-
-        .header-section { 
-            text-align: center; 
-            margin-top: 50px;
-            margin-bottom: 50px; 
-        }
-        
-        .header-section h1 { 
-            color: var(--primary-dark); 
-            font-weight: 800; 
-            letter-spacing: -1px;
-        }
-
-        .card-menu {
-            background: white;
-            border: none;
-            border-radius: 20px;
-            padding: 35px 25px;
-            color: #333;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            border: 1px solid rgba(0,0,0,0.03);
-        }
-
-        .card-menu:hover {
-            transform: translateY(-12px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-            background-color: white;
-        }
-
-        .icon { 
-            font-size: 3.5rem; 
-            margin-bottom: 20px; 
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
-        }
-
-        h4 { 
-            color: var(--primary-dark); 
-            font-weight: 700; 
-            margin-bottom: 15px;
-        }
-
-        .text-muted { 
-            font-size: 0.9rem; 
-            line-height: 1.4;
-        }
-
-        .menu-grid {
-            margin-top: 20px;
-        }
+        :root { --primary-dark: #2c3e50; --accent-blue: #3498db; --bg-light: #f4f7f6; }
+        body { background-color: var(--bg-light); font-family: 'Segoe UI', sans-serif; min-height: 100vh; margin: 0; }
+        .navbar { background-color: var(--primary-dark) !important; padding: 15px 0; border-bottom: 4px solid var(--accent-blue); }
+        .header-section { text-align: center; margin-top: 50px; margin-bottom: 50px; }
+        .header-section h1 { color: var(--primary-dark); font-weight: 800; letter-spacing: -1px; }
+        .card-menu { background: white; border: none; border-radius: 20px; padding: 35px 25px; color: #333; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03); }
+        .card-menu:hover { transform: translateY(-12px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+        .icon { font-size: 3.5rem; margin-bottom: 20px; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1)); }
+        h4 { color: var(--primary-dark); font-weight: 700; margin-bottom: 15px; }
+        .text-muted { font-size: 0.9rem; line-height: 1.4; }
     </style>
 </head>
 <body>
-
     <nav class="navbar navbar-expand-lg navbar-dark shadow">
         <div class="container">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
@@ -91,7 +26,7 @@
             </a>
             <div class="ms-auto d-flex align-items-center">
                 <span class="text-light me-3 d-none d-md-inline">Bienvenido, <strong>{{ nombre }}</strong></span>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
                     Cerrar Sesión 🚪
                 </a>
             </div>
@@ -103,44 +38,37 @@
             <h1>Panel de Control Principal</h1>
             <p class="text-secondary">Selecciona una herramienta para gestionar la sucursal</p>
         </div>
-
-        <div class="row g-4 justify-content-center menu-grid">
-            
+        <div class="row g-4 justify-content-center">
             <div class="col-md-3">
-                <div class="card card-menu text-center" onclick="location.href='{{ url_for('mostrar_selector', tipo_flujo='Inventario') }}'">
+                <div class="card card-menu text-center" onclick="location.href='{{ url_for('admin.mostrar_selector', tipo_flujo='Inventario') }}'">
                     <span class="icon">📋</span>
                     <h4>Inventario</h4>
                     <p class="text-muted">Consulta stock detallado y valor de mercancía por sucursal.</p>
                 </div>
             </div>
-
             <div class="col-md-3">
-                <div class="card card-menu text-center" onclick="location.href='{{ url_for('mostrar_selector', tipo_flujo='Venta') }}'">
+                <div class="card card-menu text-center" onclick="location.href='{{ url_for('admin.mostrar_selector', tipo_flujo='Venta') }}'">
                     <span class="icon">🛒</span>
                     <h4>Hacer Venta</h4>
                     <p class="text-muted">Selecciona sucursal para abrir el carrito y registrar ventas.</p>
                 </div>
             </div>
-
             <div class="col-md-3">
-                <div class="card card-menu text-center" onclick="location.href='{{ url_for('ver_ventas') }}'">
+                <div class="card card-menu text-center" onclick="location.href='{{ url_for('ventas.ver_ventas') }}'">
                     <span class="icon">📊</span>
                     <h4>Historial</h4>
                     <p class="text-muted">Reportes detallados de tickets, filtrados por producto y sede.</p>
                 </div>
             </div>
-
             <div class="col-md-3">
-                <div class="card card-menu text-center" onclick="location.href='{{ url_for('ver_catalogo') }}'">
+                <div class="card card-menu text-center" onclick="location.href='{{ url_for('catalogo.ver_catalogo') }}'">
                     <span class="icon">📦</span>
                     <h4>Catálogo</h4>
                     <p class="text-muted">Gestiona el inventario, registra nuevos productos y revisa alertas.</p>
                 </div>
             </div>
-
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

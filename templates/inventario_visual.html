@@ -22,7 +22,9 @@
             <h2 class="mb-0">📋 Reporte de Inventario</h2>
             <small>Consulta detallada de existencias</small>
         </div>
-        <a href="{{ url_for('mostrar_selector', tipo_flujo='Inventario') }}" class="btn btn-outline-light btn-sm">📍 Cambiar Sucursal</a>
+        {% if session.get('rol') == 'Administrador' %}
+        <a href="{{ url_for('admin.mostrar_selector', tipo_flujo='Inventario') }}" class="btn btn-outline-light btn-sm">📍 Cambiar Sucursal</a>
+        {% endif %}
     </div>
 
     <div class="row mb-4">
@@ -45,7 +47,6 @@
             <h4 class="mb-0">Lista de Lotes Disponibles</h4>
             <span class="text-muted small">Fecha de reporte: {{ hoy }}</span>
         </div>
-        
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
@@ -66,7 +67,7 @@
                     {% if sucursal == 'General' %}<td>{{ p[2] }}</td>{% endif %}
                     <td class="text-center">
                         {{ p[1] }}
-                        {% if p[1] < 10 %} <br><small>(Reabastecer)</small> {% endif %}
+                        {% if p[1] < 10 %}<br><small>(Reabastecer)</small>{% endif %}
                     </td>
                     <td class="{% if p[3] < hoy %}expired{% endif %}">{{ p[3] }}</td>
                     <td>${{ p[4] }}</td>
@@ -75,7 +76,6 @@
                 {% endfor %}
             </tbody>
         </table>
-        
         {% if not productos %}
         <div class="text-center py-5">
             <h5 class="text-muted">No se encontraron productos con stock en esta sede.</h5>
@@ -84,8 +84,11 @@
     </div>
 
     <div class="text-center mt-4 mb-5">
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary px-5 shadow-sm">⬅ Volver al Panel Principal</a>
+        {% if session.get('rol') == 'Administrador' %}
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary px-5 shadow-sm">⬅ Volver al Panel Principal</a>
+        {% else %}
+        <a href="{{ url_for('ventas.index') }}" class="btn btn-secondary px-5 shadow-sm">⬅ Volver a Ventas</a>
+        {% endif %}
     </div>
-
 </body>
 </html>
