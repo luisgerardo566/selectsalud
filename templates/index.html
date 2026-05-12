@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Módulo de Ventas - Select Salud</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
         .header-custom { background-color: #2c3e50; color: white; padding: 25px; border-radius: 0 0 20px 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -22,33 +23,44 @@
     <div class="d-flex justify-content-between align-items-center py-3">
         {% if session.get('rol') == 'Administrador' %}
         <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
-            <span>🏠</span> Volver al Panel
+            <i class="bi bi-house-door-fill"></i> Volver al Panel Principal
         </a>
         {% else %}
         <span></span>
         {% endif %}
-        <div class="text-end">
+        {% if session.get('rol') != 'Administrador' %}
+        <div class="d-flex align-items-center gap-2">
             <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
-                Cerrar Sesión 🚪
+                <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
             </a>
-            <span class="badge bg-dark px-3 py-2">👤 {{ nombre }}</span>
+            <span class="badge bg-dark px-3 py-2">
+                <i class="bi bi-person-circle me-1"></i>{{ nombre }}
+            </span>
         </div>
+        {% else %}
+        <span class="badge bg-dark px-3 py-2">
+            <i class="bi bi-graph-up-arrow me-1"></i> Modulo: Venta
+        </span>
+        {% endif %}
+        
     </div>
 
     <div class="header-custom d-flex justify-content-between align-items-center shadow">
         <div>
-            <h1 class="h2 mb-0">🛒 Módulo de Ventas</h1>
-            <p class="mb-0 opacity-75">Sucursal: <strong>{{ sucursal }}</strong></p>
+            <h1 class="h2 mb-0"><i class="bi bi-cart3 me-2"></i>Módulo de Ventas</h1>
+            <p class="mb-0 opacity-75"><i class="bi bi-geo-alt me-1"></i>Sucursal: <strong>{{ sucursal }}</strong></p>
         </div>
         <div class="text-end">
-            <a href="{{ url_for('ventas.ver_ventas') }}" class="btn btn-outline-light btn-sm">📊 Historial</a>
+            <a href="{{ url_for('ventas.ver_ventas') }}?sucursal={{ sucursal }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-graph-up-arrow me-1"></i>Historial
+            </a>
         </div>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card card-venta p-4 mb-5">
-                <h4 class="text-primary mb-4">💊 Existencias por Lote</h4>
+                <h4 class="text-primary mb-4"><i class="bi bi-capsule me-2"></i>Existencias por Lote</h4>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
@@ -79,7 +91,9 @@
                                         <input type="hidden" name="precio" value="{{ p[5] }}">
                                         <input type="hidden" name="sucursal_origen" value="{{ p[2] }}">
                                         <input type="number" name="cantidad" value="1" min="1" max="{{ p[1] }}" class="form-control form-control-sm" style="width: 65px;">
-                                        <button type="submit" class="btn btn-success btn-sm shadow-sm">➕</button>
+                                        <button type="submit" class="btn btn-success btn-sm shadow-sm">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -93,16 +107,17 @@
         <div class="col-lg-4">
             <div class="card card-venta shadow sticky-cart">
                 <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="mb-0">📋 Carrito Actual</h5>
+                    <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Carrito Actual</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3">
                     {% if session['carrito'] %}
+
                     <div class="table-responsive">
-                        <table class="table table-sm align-middle table-carrito mb-3">
+                        <table class="table table-sm align-middle mb-3" style="font-size: 0.88rem;">
                             <thead>
                                 <tr class="text-muted small">
-                                    <th>Ítem</th>
-                                    <th>Cant.</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cant.</th>
                                     <th class="text-end">Subtotal</th>
                                     <th></th>
                                 </tr>
@@ -110,30 +125,76 @@
                             <tbody>
                                 {% for item in session['carrito'] %}
                                 <tr>
-                                    <td><small class="fw-bold">{{ item.nombre }}</small></td>
-                                    <td>{{ item.cantidad }}</td>
-                                    <td class="text-end text-success">${{ "{:,.2f}".format(item.cantidad * item.precio) }}</td>
-                                    <td>
-                                        <a href="{{ url_for('ventas.eliminar_item', index=loop.index0) }}" class="text-danger ms-2">✖</a>
+                                    <td class="fw-bold" style="max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        {{ item.nombre }}
+                                        <br><small class="text-muted fw-normal">${{ "{:,.2f}".format(item.precio) }} c/u</small>
+                                    </td>
+
+                                    <!-- Controles de cantidad -->
+                                    <td class="text-center" style="white-space: nowrap;">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            <a href="{{ url_for('ventas.actualizar_cantidad', index=loop.index0, accion='menos') }}"
+                                            class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
+                                            style="width:24px; height:24px; font-size:1rem;">−</a>
+                                            <span class="fw-bold px-1">{{ item.cantidad }}</span>
+                                            <a href="{{ url_for('ventas.actualizar_cantidad', index=loop.index0, accion='mas') }}"
+                                            class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
+                                            style="width:24px; height:24px; font-size:1rem;">+</a>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-end text-success fw-bold">
+                                        ${{ "{:,.2f}".format(item.cantidad * item.precio) }}
+                                    </td>
+
+                                    <!-- Eliminar fila completa -->
+                                    <td class="text-center">
+                                        <a href="{{ url_for('ventas.eliminar_item', index=loop.index0) }}"
+                                        class="btn btn-outline-danger btn-sm px-1 py-0"
+                                        style="width:26px; height:26px;"
+                                        title="Eliminar producto">
+                                            <i class="bi bi-trash3" style="font-size: 0.75rem;"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="alert alert-info py-2 small mb-3">
-                        📍 Operación en: <strong>{{ session['carrito'][0]['sucursal_origen'] }}</strong>
+
+                    <!-- Total -->
+                    <div class="d-flex justify-content-between align-items-center px-1 mb-3">
+                        <span class="fw-bold text-muted">Total:</span>
+                            {% set total = namespace(v=0) %}
+                            {% for item in session['carrito'] %}
+                            {% set total.v = total.v + (item.cantidad * item.precio) %}
+                            {% endfor %}
+                        <span class="fw-bold text-success fs-5">${{ "{:,.2f}".format(total.v) }}</span>
                     </div>
+
+                    <!-- Sucursal -->
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-geo-alt-fill me-1"></i>Operando en:
+                        <strong>{{ session['carrito'][0]['sucursal_origen'] }}</strong>
+                    </div>
+
                     <div class="d-grid gap-2">
                         <form action="{{ url_for('ventas.confirmar_venta') }}" method="POST">
-                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">FINALIZAR VENTA</button>
+                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                                <i class="bi bi-check-circle me-2"></i>FINALIZAR VENTA
+                            </button>
                         </form>
-                        <a href="{{ url_for('ventas.limpiar_carrito') }}" class="btn btn-link btn-sm text-secondary">Vaciar Carrito</a>
+                        <a href="{{ url_for('ventas.limpiar_carrito') }}"
+                        class="btn btn-link btn-sm text-danger text-decoration-none"
+                        onclick="return confirm('¿Vaciar todo el carrito?')">
+                            <i class="bi bi-trash3 me-1"></i>Vaciar Carrito
+                        </a>
                     </div>
+
                     {% else %}
                     <div class="text-center py-5 text-muted">
-                        <div style="font-size: 3rem; opacity: 0.2;">🛒</div>
-                        <p>No hay productos en el carrito</p>
+                        <i class="bi bi-cart-x" style="font-size: 3rem; opacity: 0.2;"></i>
+                        <p class="mt-2">No hay productos en el carrito</p>
                     </div>
                     {% endif %}
                 </div>

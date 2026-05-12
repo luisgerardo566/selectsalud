@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request
 from werkzeug.security import check_password_hash
+from werkzeug.exceptions import TooManyRequests
 from database import get_db_connection
 
 auth_bp = Blueprint('auth', __name__)
@@ -37,9 +38,14 @@ def login():
                 return redirect(url_for('admin.dashboard'))
             return redirect(url_for('ventas.index'))
 
-        return render_template('login.html', error="Credenciales incorrectas")
+        return render_template('login.html', error="Usuario o contraseña incorrectos.")
 
     return render_template('login.html')
+
+
+@auth_bp.errorhandler(429)
+def rate_limit_handler(e):
+    return render_template('login.html', rate_limited=True), 429
 
 
 @auth_bp.route('/logout')

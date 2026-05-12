@@ -3,93 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historial Maestro - Select Salud</title>
+    <title>Historial de Ventas - Select Salud</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
         .header-custom { background-color: #2c3e50; color: white; padding: 25px; border-radius: 0 0 20px 20px; margin-bottom: 30px; }
         .table-container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .btn-admin-back { background-color: #ffffff; color: #2c3e50; border: 2px solid #3498db; border-radius: 30px; font-weight: 600; padding: 8px 20px; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-admin-back:hover { background-color: #3498db; color: white; transform: translateX(-5px); }
-        .filter-section { background: #ebf2f7; padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 5px solid #3498db; }
+        .btn-back { background-color: #fff; color: #2c3e50; border: 2px solid #3498db; border-radius: 30px; font-weight: 600; padding: 8px 20px; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-back:hover { background-color: #3498db; color: white; transform: translateX(-5px); }
+        .filter-card { background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 20px 25px; margin-bottom: 25px; border-left: 5px solid #3498db; }
+        .filter-card .form-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: #5d6d7e; margin-bottom: 4px; }
+        .periodo-btns .btn { border-radius: 20px; font-size: 0.82rem; padding: 5px 14px; }
+        .periodo-btns .btn.active { background-color: #3498db; color: white; border-color: #3498db; }
     </style>
 </head>
 <body class="container">
 
-    <div class="py-3">
+    <div class="d-flex justify-content-between align-items-center py-3">
         {% if session.get('rol') == 'Administrador' %}
-        <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
-            <span>🏠</span> Volver al Panel Principal
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-back shadow-sm">
+            <i class="bi bi-house-door-fill"></i> Panel Principal
         </a>
         {% else %}
-        <a href="{{ url_for('ventas.index') }}" class="btn-admin-back shadow-sm">
-            <span>🛒</span> Volver a Ventas
+        <a href="{{ url_for('ventas.index') }}" class="btn-back shadow-sm">
+            <i class="bi bi-cart3"></i> Volver a Ventas
         </a>
         {% endif %}
+        <span class="badge bg-dark px-3 py-2">
+            <i class="bi bi-graph-up-arrow me-1"></i> Modulo: Historial de Ventas
+        </span>
     </div>
 
-    <div class="header-custom d-flex justify-content-between align-items-center shadow">
-        <div>
-            <h1 class="h2 mb-0">📊 Historial de Ventas</h1>
-            <p class="mb-0 opacity-75">Gestión centralizada de tickets y facturación</p>
-        </div>
+    <div class="header-custom shadow">
+        <h1 class="h2 mb-1"><i class="bi bi-graph-up-arrow me-2"></i>Historial de Ventas</h1>
+        <p class="mb-0 opacity-75">Consulta y filtra los tickets registrados</p>
     </div>
 
-    <div class="filter-section shadow-sm">
-        <form method="GET" action="{{ url_for('ventas.ver_ventas') }}" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label small fw-bold text-uppercase">Buscar Producto</label>
-                <input type="text" name="producto" class="form-control" placeholder="Ej: Paracetamol" value="{{ request.args.get('producto', '') }}">
+    {# ── FILTROS ── #}
+    <div class="filter-card shadow-sm">
+        <form method="GET" action="{{ url_for('ventas.ver_ventas') }}">
+
+            {# Fila 1: Ticket, Producto, Vendedor, Sucursal #}
+            <div class="row g-3 mb-3">
+                <div class="col-md-3 col-6">
+                    <label class="form-label"><i class="bi bi-hash me-1"></i>No. Ticket</label>
+                    <input type="text" name="ticket" class="form-control form-control-sm"
+                           placeholder="Ej: 42" value="{{ request.args.get('ticket', '') }}">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label"><i class="bi bi-capsule me-1"></i>Producto</label>
+                    <input type="text" name="producto" class="form-control form-control-sm"
+                           placeholder="Ej: Paracetamol" value="{{ request.args.get('producto', '') }}">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label"><i class="bi bi-person me-1"></i>Vendedor</label>
+                    <select name="vendedor" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for v in vendedores %}
+                        <option value="{{ v }}" {% if request.args.get('vendedor') == v %}selected{% endif %}>{{ v }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if session.get('rol') == 'Administrador' %}
+                <div class="col-md-3 col-6">
+                    <label class="form-label"><i class="bi bi-building me-1"></i>Sucursal</label>
+                    <select name="sucursal" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        {% for s in sucursales %}
+                        <option value="{{ s }}" {% if request.args.get('sucursal') == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
             </div>
-            {% if session.get('rol') == 'Administrador' %}
-            <div class="col-md-4">
-                <label class="form-label small fw-bold text-uppercase">Filtrar por Sucursal</label>
-                <select name="sucursal" class="form-select">
-                    <option value="">Todas las Sedes</option>
-                    {% for s in sucursales %}
-                    <option value="{{ s }}" {% if request.args.get('sucursal') == s %}selected{% endif %}>{{ s }}</option>
+
+            {# Fila 2: Período #}
+            <div class="mb-3">
+                <label class="form-label d-block"><i class="bi bi-calendar3 me-1"></i>Período</label>
+                <div class="periodo-btns d-flex flex-wrap gap-2">
+                    {% set periodo_actual = request.args.get('periodo', '') %}
+                    {% for valor, etiqueta in [('', 'Todos'), ('hoy', 'Hoy'), ('ayer', 'Ayer'), ('semana', 'Últimos 7 días'), ('mes', 'Este mes'), ('trimestre', 'Últimos 3 meses')] %}
+                    <button type="submit" name="periodo" value="{{ valor }}"
+                            class="btn btn-outline-secondary {% if periodo_actual == valor %}active{% endif %}">
+                        {{ etiqueta }}
+                    </button>
                     {% endfor %}
-                </select>
+                </div>
+                {# Conservar otros filtros al hacer clic en período #}
+                <input type="hidden" name="ticket"   value="{{ request.args.get('ticket', '') }}">
+                <input type="hidden" name="producto" value="{{ request.args.get('producto', '') }}">
+                <input type="hidden" name="vendedor" value="{{ request.args.get('vendedor', '') }}">
+                <input type="hidden" name="sucursal" value="{{ request.args.get('sucursal', '') }}">
             </div>
-            {% endif %}
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100 fw-bold">🔍 Aplicar Filtros</button>
+
+            {# Fila 3: Botones acción #}
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="{{ url_for('ventas.ver_ventas') }}" class="btn btn-outline-secondary btn-sm px-4">
+                    <i class="bi bi-x-circle me-1"></i>Limpiar
+                </a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">
+                    <i class="bi bi-funnel me-1"></i>Filtrar
+                </button>
             </div>
+
         </form>
     </div>
 
+    {# ── TABLA ── #}
     <div class="table-container mb-5">
+        {% if ventas %}
+        <p class="text-muted small mb-3">
+            <i class="bi bi-receipt me-1"></i>
+            {{ ventas|length }} resultado{% if ventas|length != 1 %}s{% endif %} encontrado{% if ventas|length != 1 %}s{% endif %}
+        </p>
+        {% endif %}
+
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Ticket #</th>
-                    <th>Fecha y Hora</th>
-                    <th>Vendedor</th>
-                    <th>Sucursal</th>
-                    <th>Total</th>
-                    <th class="text-center">Acciones</th>
+                    <th><i class="bi bi-hash me-1"></i>Ticket</th>
+                    <th><i class="bi bi-clock me-1"></i>Fecha y Hora</th>
+                    <th><i class="bi bi-person me-1"></i>Vendedor</th>
+                    <th><i class="bi bi-building me-1"></i>Sucursal</th>
+                    <th><i class="bi bi-cash me-1"></i>Total</th>
+                    <th class="text-center">Detalle</th>
                 </tr>
             </thead>
             <tbody>
                 {% for v in ventas %}
                 <tr>
                     <td><span class="badge bg-secondary">#{{ v[0] }}</span></td>
-                    <td class="text-muted">{{ v[1].strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td class="text-muted small">{{ v[1].strftime('%d/%m/%Y %H:%M') }}</td>
                     <td class="fw-bold">{{ v[2] }}</td>
                     <td><span class="badge bg-info text-dark">{{ v[3] }}</span></td>
                     <td class="fw-bold text-success">${{ "{:,.2f}".format(v[4]) }}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-primary px-3 shadow-sm" onclick="abrirDetalle({{ v[0] }})">
-                            👁️ Ver Productos
+                        <button class="btn btn-sm btn-outline-primary px-3" onclick="abrirDetalle({{ v[0] }})">
+                            <i class="bi bi-eye me-1"></i>Ver
                         </button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
         {% if not ventas %}
         <div class="text-center py-5">
-            <h5 class="text-muted">No se encontraron ventas con los criterios seleccionados.</h5>
+            <i class="bi bi-inbox" style="font-size:2.5rem; color:#ccc;"></i>
+            <p class="text-muted mt-2">No se encontraron ventas con los filtros aplicados.</p>
         </div>
         {% endif %}
     </div>

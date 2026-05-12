@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request
 from database import get_db_connection, get_nombre_sucursal
-from datetime import date
+from datetime import date, timedelta
 
 ventas_bp = Blueprint('ventas', __name__)
 
@@ -8,7 +8,6 @@ ventas_bp = Blueprint('ventas', __name__)
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _sucursal_label_y_query_venta(cur, base_query):
-    """Devuelve (sucursal_label, productos) según el rol del usuario."""
     if session.get('rol') == 'Administrador':
         sucursal_f = session.get('sucursal_seleccionada', 'General')
         if sucursal_f == 'General':
@@ -62,27 +61,42 @@ def agregar_carrito(lote_id):
 
     carrito = session['carrito']
     sucursal_real_lote = request.form.get('sucursal_origen')
+    cantidad_nueva = int(request.form.get('cantidad', 1))
 
     if carrito and carrito[0].get('sucursal_origen') != sucursal_real_lote:
         return redirect(url_for('ventas.index'))
 
+    for item in carrito:
+        if item['lote_id'] == lote_id:
+            item['cantidad'] += cantidad_nueva
+            session['carrito'] = carrito
+            session.modified = True
+            return redirect(url_for('ventas.index'))
+
     carrito.append({
         'lote_id':         lote_id,
         'nombre':          request.form.get('nombre'),
-        'cantidad':        int(request.form.get('cantidad')),
+        'cantidad':        cantidad_nueva,
         'precio':          float(request.form.get('precio')),
         'sucursal_origen': sucursal_real_lote,
     })
-
     session['carrito'] = carrito
     session.modified = True
     return redirect(url_for('ventas.index'))
 
 
-@ventas_bp.route('/limpiar_carrito')
-def limpiar_carrito():
-    session['carrito'] = []
-    session.modified = True
+@ventas_bp.route('/actualizar_cantidad/<int:index>/<accion>')
+def actualizar_cantidad(index, accion):
+    carrito = session.get('carrito', [])
+    if 0 <= index < len(carrito):
+        if accion == 'mas':
+            carrito[index]['cantidad'] += 1
+        elif accion == 'menos':
+            carrito[index]['cantidad'] -= 1
+            if carrito[index]['cantidad'] <= 0:
+                carrito.pop(index)
+        session['carrito'] = carrito
+        session.modified = True
     return redirect(url_for('ventas.index'))
 
 
@@ -93,6 +107,13 @@ def eliminar_item(index):
         carrito.pop(index)
         session['carrito'] = carrito
         session.modified = True
+    return redirect(url_for('ventas.index'))
+
+
+@ventas_bp.route('/limpiar_carrito')
+def limpiar_carrito():
+    session['carrito'] = []
+    session.modified = True
     return redirect(url_for('ventas.index'))
 
 
@@ -146,8 +167,12 @@ def ver_ventas():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
-    sucursal_filtro = request.args.get('sucursal', '')
-    producto_filtro = request.args.get('producto', '')
+    # Filtros desde la URL
+    ticket_filtro   = request.args.get('ticket', '').strip()
+    producto_filtro = request.args.get('producto', '').strip()
+    vendedor_filtro = request.args.get('vendedor', '').strip()
+    sucursal_filtro = request.args.get('sucursal', '').strip()
+    periodo_filtro  = request.args.get('periodo', '').strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -164,26 +189,67 @@ def ver_ventas():
     '''
     params = []
 
+    # Restricción por rol
     if session.get('rol') != 'Administrador':
         query += " AND v.id_sucursal = %s"
         params.append(session['id_sucursal_user'])
-    if sucursal_filtro:
-        query += " AND s.nombre_sucursal ILIKE %s"
-        params.append(f"%{sucursal_filtro}%")
+
+    # Filtro por No. Ticket
+    if ticket_filtro:
+        query += " AND CAST(v.id_venta AS TEXT) ILIKE %s"
+        params.append(f"%{ticket_filtro}%")
+
+    # Filtro por producto
     if producto_filtro:
         query += " AND p.nombre ILIKE %s"
         params.append(f"%{producto_filtro}%")
+
+    # Filtro por vendedor
+    if vendedor_filtro:
+        query += " AND u.nombre_usuario ILIKE %s"
+        params.append(f"%{vendedor_filtro}%")
+
+    # Filtro por sucursal (solo admin)
+    if sucursal_filtro and session.get('rol') == 'Administrador':
+        query += " AND s.nombre_sucursal ILIKE %s"
+        params.append(f"%{sucursal_filtro}%")
+
+    # Filtro por período
+    hoy = date.today()
+    if periodo_filtro == 'hoy':
+        query += " AND v.fecha_hora::date = %s"
+        params.append(hoy)
+    elif periodo_filtro == 'ayer':
+        query += " AND v.fecha_hora::date = %s"
+        params.append(hoy - timedelta(days=1))
+    elif periodo_filtro == 'semana':
+        query += " AND v.fecha_hora::date >= %s"
+        params.append(hoy - timedelta(days=7))
+    elif periodo_filtro == 'mes':
+        query += " AND v.fecha_hora::date >= %s"
+        params.append(hoy.replace(day=1))
+    elif periodo_filtro == 'trimestre':
+        query += " AND v.fecha_hora::date >= %s"
+        params.append(hoy - timedelta(days=90))
 
     query += " ORDER BY v.fecha_hora DESC"
     cur.execute(query, params)
     ventas_maestro = cur.fetchall()
 
-    cur.execute("SELECT nombre_sucursal FROM sucursales")
+    # Listado de sucursales y vendedores para los selects
+    cur.execute("SELECT nombre_sucursal FROM sucursales ORDER BY nombre_sucursal")
     listado_sucursales = [s[0] for s in cur.fetchall()]
+
+    cur.execute("SELECT DISTINCT nombre_usuario FROM usuarios ORDER BY nombre_usuario")
+    listado_vendedores = [u[0] for u in cur.fetchall()]
 
     cur.close()
     conn.close()
-    return render_template('ventas.html', ventas=ventas_maestro, sucursales=listado_sucursales)
+
+    return render_template('ventas.html',
+                           ventas=ventas_maestro,
+                           sucursales=listado_sucursales,
+                           vendedores=listado_vendedores)
 
 
 @ventas_bp.route('/venta_detalle/<int:id_venta>')
