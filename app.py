@@ -39,7 +39,7 @@ def login():
             session['user_id'] = user[0]
             session['nombre'] = user[1]
             session['rol'] = user[3]
-            session['id_sucursal_user'] = user[4]
+            session['id_sucursal_user'] = user[4]  # Esta es la clave
             session['carrito'] = []
 
             if session['rol'] == 'Administrador':
@@ -70,16 +70,22 @@ def ir_a_tabla(modo, sucursal):
     if modo == 'Venta':
         return redirect(url_for('index'))
     return redirect(url_for('ver_inventario'))
+
 @app.route('/')
 def index():
     if 'user_id' not in session: return redirect(url_for('login'))
     
+    rol = session.get('rol')
+    id_sucursal_u = session.get('id_sucursal_user')
+    
+    # El Admin usa su sucursal seleccionada, el Farmacéutico no tiene opción
     sucursal_f = session.get('sucursal_seleccionada', 'General')
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    query = '''
+    # Base de la consulta (tu query original)
+    query_base = '''
         SELECT p.nombre, l.stock_actual, s.nombre_sucursal, l.id_lote, 
                l.fecha_caducidad, p.precio_venta, l.codigo_lote
         FROM productos p
@@ -87,11 +93,16 @@ def index():
         JOIN sucursales s ON l.id_sucursal = s.id_sucursal
         WHERE l.stock_actual > 0
     '''
-#CONSULTA GENERAL   
-    if sucursal_f == 'General':
-        cur.execute(query + " ORDER BY s.nombre_sucursal ASC")
+
+    if rol == 'Farmaceutico':
+        # FORZAMOS el filtro por el ID de sucursal del usuario
+        cur.execute(query_base + " AND l.id_sucursal = %s ORDER BY p.nombre ASC", (id_sucursal_u,))
     else:
-        cur.execute(query + " AND s.nombre_sucursal ILIKE %s", (f"%{sucursal_f}%",))
+        # Lógica original para el Administrador
+        if sucursal_f == 'General':
+            cur.execute(query_base + " ORDER BY s.nombre_sucursal ASC")
+        else:
+            cur.execute(query_base + " AND s.nombre_sucursal ILIKE %s", (f"%{sucursal_f}%",))
 
     productos = cur.fetchall()
     cur.close()
@@ -102,6 +113,7 @@ def index():
                            sucursal=sucursal_f, 
                            nombre=session.get('nombre'), 
                            hoy=date.today())
+
 # (Inventario) 
 @app.route('/inventario')
 def ver_inventario():
@@ -136,6 +148,7 @@ def ver_inventario():
                            total_dinero=total_dinero, 
                            hoy=date.today())
 
+
 # HISTORIAL DE VENTAS 
 @app.route('/ventas')
 def ver_ventas():
@@ -144,9 +157,14 @@ def ver_ventas():
     sucursal_filtro = request.args.get('sucursal', '')
     producto_filtro = request.args.get('producto', '')
     
+    # Obtenemos los datos del usuario actual
+    user_id_sesion = session.get('user_id')
+    rol_sesion = session.get('rol')
+    
     conn = get_db_connection()
     cur = conn.cursor()
     
+    # Tu consulta original con los JOINs necesarios
     query = '''
         SELECT DISTINCT v.id_venta, v.fecha_hora, u.nombre_usuario, s.nombre_sucursal, v.total
         FROM ventas v
@@ -158,6 +176,14 @@ def ver_ventas():
         WHERE 1=1
     '''
     params = []
+
+    # --- LÓGICA DE PRIVACIDAD ---
+    if rol_sesion == 'Farmaceutico':
+        # Isaac solo ve las ventas que ÉL hizo
+        query += " AND v.id_usuario = %s"
+        params.append(user_id_sesion)
+    
+    # Mantener tus filtros de búsqueda ILIKE
     if sucursal_filtro:
         query += " AND s.nombre_sucursal ILIKE %s"
         params.append(f"%{sucursal_filtro}%")
@@ -166,16 +192,23 @@ def ver_ventas():
         params.append(f"%{producto_filtro}%")
         
     query += " ORDER BY v.fecha_hora DESC"
+    
     cur.execute(query, params)
     ventas_maestro = cur.fetchall()
     
-    # Listado para el buscador de sucursales
+    # Listado para el buscador de sucursales (puedes limitarlo también si quieres)
     cur.execute("SELECT nombre_sucursal FROM sucursales")
     listado_sucursales = [s[0] for s in cur.fetchall()]
     
     cur.close()
     conn.close()
-    return render_template('ventas.html', ventas=ventas_maestro, sucursales=listado_sucursales)
+    
+    return render_template('ventas.html', 
+                           ventas=ventas_maestro, 
+                           sucursales=listado_sucursales,
+                           nombre=session.get('nombre'),
+                           rol=rol_sesion)
+
 
 @app.route('/venta_detalle/<int:id_venta>')
 def venta_detalle(id_venta):
@@ -371,6 +404,34 @@ def agregar_lote():
         conn.close()
         
     return redirect(url_for('ver_catalogo'))
+
+@app.route('/consulta_global')
+def consulta_global():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Traemos todo el inventario de todas las sucursales
+    cur.execute('''
+        SELECT p.nombre, l.stock_actual, s.nombre_sucursal, l.id_lote, 
+               l.fecha_caducidad, p.precio_venta, l.codigo_lote
+        FROM productos p
+        JOIN lotes l ON p.id_producto = l.id_producto
+        JOIN sucursales s ON l.id_sucursal = s.id_sucursal
+        WHERE l.stock_actual > 0
+        ORDER BY p.nombre ASC
+    ''')
+    
+    productos_globales = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('index.html', 
+                           productos=productos_globales, 
+                           sucursal='TODAS (MODO CONSULTA)', 
+                           nombre=session.get('nombre'), 
+                           hoy=date.today(),
+                           modo_consulta=True) 
 
 @app.route('/logout')
 def logout():
