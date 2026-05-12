@@ -39,6 +39,9 @@
             <span>🏠</span> Volver al Panel
         </a>
         <div class="text-end">
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
+                    Cerrar Sesión 🚪
+                </a>
             <span class="badge bg-dark px-3 py-2">👤 {{ nombre }} ({{ rol }})</span>
         </div>
     </div>

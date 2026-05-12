@@ -1,14 +1,17 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, redirect, url_for, request, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import psycopg2
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'select_salud_v2_2026_final'
+app.permanent_session_lifetime = timedelta(hours=1)
 
 # CONEXIÓN A DB 
 def get_db_connection():
-    conn_str = "host='127.0.0.1' port='5432' dbname='db_selectSalud' user='postgres' password='123456'"
+    conn_str = "host='aws-1-us-east-1.pooler.supabase.com' port='5432' dbname='postgres' user='postgres.rwvvlmzaoeglnwodgdql' password='Axvze7k7Op.'"
     try:
         conn = psycopg2.connect(conn_str)
         conn.set_client_encoding('UTF8')
@@ -18,7 +21,12 @@ def get_db_connection():
         return None
 
 #  ACCESO 
+limiter = Limiter(          
+    key_func=get_remote_address,
+    app=app
+)
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if 'user_id' in session:
         return redirect(url_for('admin_dashboard' if session['rol'] == 'Administrador' else 'index'))
@@ -36,6 +44,7 @@ def login():
 
         if user and check_password_hash(user[2].strip(), password_form):
             session.clear()
+            session.permanent = True
             session['user_id'] = user[0]
             session['nombre'] = user[1]
             session['rol'] = user[3]
