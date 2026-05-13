@@ -18,9 +18,15 @@
 </head>
 <body class="container">
     <div class="d-flex justify-content-between align-items-center py-3">
+        {% if session.get('rol') == 'Gerente' %}
+        <a href="{{ url_for('admin.gerente_dashboard') }}" class="btn-admin-back shadow-sm">
+            <i class="bi bi-house-door-fill"></i> Volver al Panel
+        </a>
+        {% else %}
         <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
             <i class="bi bi-house-door-fill"></i> Volver al Panel Principal
         </a>
+        {% endif %}
         <span class="badge bg-dark px-3 py-2">
             <i class="bi bi-box-seam me-1"></i>Módulo: Catálogo
         </span>
@@ -28,11 +34,20 @@
 
     <div class="header-custom shadow">
         <h1 class="h2 mb-0"><i class="bi bi-box-seam me-2"></i>Gestión de Catálogo</h1>
-        <p class="mb-0 opacity-75">Administra productos base, entrada de lotes y alertas de stock.</p>
+        <p class="mb-0 opacity-75">
+            {% if es_gerente %}
+            Entrada de lotes y alertas de tu sucursal.
+            {% else %}
+            Administra productos base, entrada de lotes y alertas de stock.
+            {% endif %}
+        </p>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
+
+            {# Solo el Administrador puede crear productos globales #}
+            {% if not es_gerente %}
             <div class="card card-catalogo p-4 mb-4">
                 <h5 class="section-title"><i class="bi bi-plus-circle me-2"></i>Registrar Nuevo Producto</h5>
                 <form action="{{ url_for('catalogo.agregar_producto') }}" method="POST" class="row g-3">
@@ -75,6 +90,7 @@
                     </div>
                 </form>
             </div>
+            {% endif %}
 
             <div class="card card-catalogo p-4">
                 <h5 class="section-title"><i class="bi bi-inbox-fill me-2"></i>Entrada de Mercancía (Lotes)</h5>
@@ -103,7 +119,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-bold">
-                            <i class="bi bi-calendar-check me-1"></i>Fecha de Entrega (Hoy)
+                            <i class="bi bi-calendar-check me-1"></i>Fecha de Entrega
                         </label>
                         <input type="date" name="fecha_entrega" class="form-control" required>
                     </div>
@@ -123,11 +139,20 @@
                         <label class="form-label small fw-bold">
                             <i class="bi bi-building me-1"></i>Sucursal
                         </label>
+                        {% if es_gerente %}
+                        {# Gerente: su sucursal fija, el backend la fuerza igual #}
+                        <select name="id_sucursal" class="form-select" disabled>
+                            {% for suc in lista_sucursales %}
+                            <option value="{{ suc[0] }}" selected>{{ suc[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
                         <select name="id_sucursal" class="form-select" required>
                             {% for suc in lista_sucursales %}
                             <option value="{{ suc[0] }}">{{ suc[1] }}</option>
                             {% endfor %}
                         </select>
+                        {% endif %}
                     </div>
                     <div class="col-12 text-end">
                         <button type="submit" class="btn btn-success px-4 fw-bold">

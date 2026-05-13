@@ -25,6 +25,10 @@
         <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
             <i class="bi bi-house-door-fill"></i> Volver al Panel Principal
         </a>
+        {% elif session.get('rol') == 'Gerente' %}
+        <a href="{{ url_for('admin.gerente_dashboard') }}" class="btn-admin-back shadow-sm">
+            <i class="bi bi-house-door-fill"></i> Volver al Panel
+        </a>
         {% else %}
         <span></span>
         {% endif %}
@@ -179,8 +183,9 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <form action="{{ url_for('ventas.confirmar_venta') }}" method="POST">
-                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                        <form action="{{ url_for('ventas.confirmar_venta') }}" method="POST" id="form-confirmar-venta">
+                            <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm"
+                                    data-bs-toggle="modal" data-bs-target="#modalConfirmarVenta">
                                 <i class="bi bi-check-circle me-2"></i>FINALIZAR VENTA
                             </button>
                         </form>
@@ -202,5 +207,37 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal: ¿Encontró todo lo que buscaba? -->
+    <div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-labelledby="modalConfirmarVentaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white rounded-top-4 border-0 py-3">
+                    <h5 class="modal-title fw-bold" id="modalConfirmarVentaLabel">
+                        <i class="bi bi-question-circle me-2"></i>Antes de finalizar...
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-bag-heart" style="font-size: 2.8rem; color: #2c3e50; opacity: 0.8;"></i>
+                    <p class="fs-5 fw-semibold mt-3 mb-1">¿El cliente encontró todo lo que buscaba?</p>
+                    <p class="text-muted small">Esta información nos ayuda a mejorar el servicio.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-3 pb-4">
+                    <button type="button" class="btn btn-success px-4 rounded-pill fw-bold shadow-sm"
+                            data-bs-dismiss="modal"
+                            onclick="document.getElementById('form-confirmar-venta').submit()">
+                        <i class="bi bi-hand-thumbs-up me-1"></i> Sí
+                    </button>
+                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-bold"
+                            data-bs-dismiss="modal"
+                            onclick="document.getElementById('form-confirmar-venta').submit()">
+                        <i class="bi bi-hand-thumbs-down me-1"></i> No
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

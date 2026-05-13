@@ -25,6 +25,10 @@
         <a href="{{ url_for('admin.dashboard') }}" class="btn-back shadow-sm">
             <i class="bi bi-house-door-fill"></i> Panel Principal
         </a>
+        {% elif session.get('rol') == 'Gerente' %}
+        <a href="{{ url_for('admin.gerente_dashboard') }}" class="btn-back shadow-sm">
+            <i class="bi bi-house-door-fill"></i> Panel de Gerente
+        </a>
         {% else %}
         <a href="{{ url_for('ventas.index') }}" class="btn-back shadow-sm">
             <i class="bi bi-cart3"></i> Volver a Ventas

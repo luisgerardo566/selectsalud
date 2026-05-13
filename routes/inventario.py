@@ -4,6 +4,8 @@ from datetime import date
 
 inventario_bp = Blueprint('inventario', __name__)
 
+ROLES_SUCURSAL = ('Farmaceutico', 'Gerente')
+
 
 @inventario_bp.route('/inventario')
 def ver_inventario():
@@ -31,6 +33,7 @@ def ver_inventario():
                 (f"%{sucursal_f}%",)
             )
     else:
+        # Farmacéutico y Gerente: solo su sucursal
         sucursal_f = get_nombre_sucursal(session['id_sucursal_user'])
         cur.execute(base_query + " WHERE l.id_sucursal = %s", (session['id_sucursal_user'],))
 

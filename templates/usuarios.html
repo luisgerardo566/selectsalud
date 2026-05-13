@@ -14,6 +14,7 @@
         .card-catalogo { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); background: white; }
         .section-title { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; color: #2c3e50; font-weight: bold; }
         .badge-admin { background-color: #e67e22; }
+        .badge-gerente { background-color: #8e44ad; }
         .badge-farm  { background-color: #27ae60; }
         .table thead { background-color: #2c3e50; color: white; }
         .table tbody tr:hover { background-color: #f0f4f8; }
@@ -25,9 +26,15 @@
 <body class="container">
 
     <div class="d-flex justify-content-between align-items-center py-3">
+        {% if es_gerente %}
+        <a href="{{ url_for('admin.gerente_dashboard') }}" class="btn-admin-back shadow-sm">
+            <i class="bi bi-house-door-fill"></i> Volver al Panel
+        </a>
+        {% else %}
         <a href="{{ url_for('admin.dashboard') }}" class="btn-admin-back shadow-sm">
             <i class="bi bi-house-door-fill"></i> Volver al Panel Principal
         </a>
+        {% endif %}
         <span class="badge bg-dark px-3 py-2">
             <i class="bi bi-people-fill me-1"></i> Módulo: Gestión de Usuarios
         </span>
@@ -35,12 +42,16 @@
 
     <div class="header-custom shadow">
         <h1 class="h2 mb-0"><i class="bi bi-people-fill me-2"></i>Gestión de Usuarios</h1>
-        <p class="mb-0 opacity-75">Crea, administra y controla el acceso del personal al sistema.</p>
+        <p class="mb-0 opacity-75">
+            {% if es_gerente %}
+            Administra los farmacéuticos de tu sucursal.
+            {% else %}
+            Crea, administra y controla el acceso del personal al sistema.
+            {% endif %}
+        </p>
     </div>
 
     <div class="row g-4">
-
-        <!-- Formulario nuevo usuario -->
         <div class="col-lg-4">
             <div class="card card-catalogo p-4">
                 <h5 class="section-title"><i class="bi bi-person-plus-fill me-2"></i>Agregar Nuevo Usuario</h5>
@@ -49,7 +60,7 @@
                         <label class="form-label small fw-bold">
                             <i class="bi bi-person me-1"></i>Nombre de Usuario
                         </label>
-                        <input type="text" name="nombre_usuario" class="form-control" placeholder="Ej: luis_admin" required>
+                        <input type="text" name="nombre_usuario" class="form-control" placeholder="Ej: luis_farm" required>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">
@@ -62,6 +73,17 @@
                             </button>
                         </div>
                     </div>
+
+                    {# Gerente: rol fijo Farmacéutico, no puede elegir #}
+                    {% if es_gerente %}
+                    <input type="hidden" name="rol" value="Farmaceutico">
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">
+                            <i class="bi bi-shield me-1"></i>Rol
+                        </label>
+                        <input type="text" class="form-control" value="Farmacéutico" disabled>
+                    </div>
+                    {% else %}
                     <div class="col-12">
                         <label class="form-label small fw-bold">
                             <i class="bi bi-shield me-1"></i>Rol
@@ -69,22 +91,32 @@
                         <select name="rol" class="form-select" required>
                             <option value="" disabled selected>Selecciona un rol...</option>
                             <option value="Administrador">Administrador</option>
+                            <option value="Gerente">Gerente</option>
                             <option value="Farmaceutico">Farmacéutico</option>
                         </select>
                     </div>
+                    {% endif %}
+
                     <div class="col-12">
                         <label class="form-label small fw-bold">
                             <i class="bi bi-building me-1"></i>Sucursal
                         </label>
+                        {% if es_gerente %}
+                        <input type="text" class="form-control" value="{{ lista_sucursales[0][1] }}" disabled>
+                        <input type="hidden" name="id_sucursal" value="{{ lista_sucursales[0][0] }}">
+                        {% else %}
                         <select name="id_sucursal" class="form-select" required>
                             <option value="" disabled selected>Selecciona una sucursal...</option>
                             {% for suc in lista_sucursales %}
                             <option value="{{ suc[0] }}">{{ suc[1] }}</option>
                             {% endfor %}
                         </select>
+                        {% endif %}
                     </div>
+
                     <div class="col-12 text-end mt-2">
-                        <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                        <button type="button" class="btn btn-primary px-4 fw-bold shadow-sm"
+                                onclick="confirmarCrear()">
                             <i class="bi bi-check-circle me-1"></i>Crear Usuario
                         </button>
                     </div>
@@ -92,7 +124,6 @@
             </div>
         </div>
 
-        <!-- Tabla de usuarios -->
         <div class="col-lg-8">
             <div class="card card-catalogo p-4">
                 <h5 class="section-title"><i class="bi bi-list-ul me-2"></i>Usuarios Registrados</h5>
@@ -113,11 +144,16 @@
                                 <td class="text-muted small">{{ u[0] }}</td>
                                 <td><strong>{{ u[1] }}</strong></td>
                                 <td>
-                                    <span class="badge {% if u[2] == 'Administrador' %}badge-admin{% else %}badge-farm{% endif %}">
+                                    <span class="badge
+                                        {% if u[2] == 'Administrador' %}badge-admin
+                                        {% elif u[2] == 'Gerente' %}badge-gerente
+                                        {% else %}badge-farm{% endif %}">
                                         {% if u[2] == 'Administrador' %}
-                                        <i class="bi bi-shield-fill me-1"></i>
+                                            <i class="bi bi-shield-fill me-1"></i>
+                                        {% elif u[2] == 'Gerente' %}
+                                            <i class="bi bi-person-workspace me-1"></i>
                                         {% else %}
-                                        <i class="bi bi-capsule me-1"></i>
+                                            <i class="bi bi-capsule me-1"></i>
                                         {% endif %}
                                         {{ u[2] }}
                                     </span>
@@ -125,13 +161,11 @@
                                 <td class="small">{{ u[3] }}</td>
                                 <td class="text-center">
                                     <div class="d-flex gap-2 justify-content-center">
-
                                         <button type="button"
                                                 class="btn btn-sm btn-outline-primary fw-bold"
                                                 onclick="abrirModal({{ u[0] }}, '{{ u[1] }}', '{{ u[2] }}', {{ u[4] }})">
                                             <i class="bi bi-pencil-square me-1"></i>Editar
                                         </button>
-
                                         {% if u[0] != session.get('user_id') %}
                                         <form action="{{ url_for('usuarios.eliminar_usuario', id_usuario=u[0]) }}" method="POST"
                                               onsubmit="return confirm('¿Eliminar al usuario {{ u[1] }}? Esta acción no se puede deshacer.')">
@@ -144,7 +178,6 @@
                                             <i class="bi bi-person-check me-1"></i>Tú
                                         </span>
                                         {% endif %}
-
                                     </div>
                                 </td>
                             </tr>
@@ -169,28 +202,36 @@
                 </div>
                 <form id="formEditarUsuario" method="POST">
                     <div class="modal-body row g-3 p-4">
-
                         <div class="col-12">
                             <label class="form-label small fw-bold">
                                 <i class="bi bi-shield me-1"></i>Rol
                             </label>
+                            {% if es_gerente %}
+                            <input type="text" class="form-control" value="Farmacéutico" disabled>
+                            <input type="hidden" name="rol" value="Farmaceutico">
+                            {% else %}
                             <select name="rol" id="modal_rol" class="form-select" required>
                                 <option value="Administrador">Administrador</option>
+                                <option value="Gerente">Gerente</option>
                                 <option value="Farmaceutico">Farmacéutico</option>
                             </select>
+                            {% endif %}
                         </div>
-
                         <div class="col-12">
                             <label class="form-label small fw-bold">
                                 <i class="bi bi-building me-1"></i>Sucursal
                             </label>
+                            {% if es_gerente %}
+                            <input type="text" class="form-control" value="{{ lista_sucursales[0][1] }}" disabled>
+                            <input type="hidden" name="id_sucursal" value="{{ lista_sucursales[0][0] }}">
+                            {% else %}
                             <select name="id_sucursal" id="modal_sucursal" class="form-select" required>
                                 {% for suc in lista_sucursales %}
                                 <option value="{{ suc[0] }}">{{ suc[1] }}</option>
                                 {% endfor %}
                             </select>
+                            {% endif %}
                         </div>
-
                         <div class="col-12">
                             <label class="form-label small fw-bold">
                                 <i class="bi bi-lock me-1"></i>Nueva Contraseña
@@ -205,17 +246,45 @@
                                 </button>
                             </div>
                         </div>
-
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                             <i class="bi bi-x-circle me-1"></i>Cancelar
                         </button>
-                        <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <button type="button" class="btn btn-primary fw-bold px-4"
+                                onclick="confirmarEditar()">
                             <i class="bi bi-check-circle me-1"></i>Guardar Cambios
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación -->
+    <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalConfirmTitulo">
+                        <i class="bi bi-clipboard-check me-2"></i>Confirmar datos
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Por favor verifica que los datos sean correctos antes de continuar:</p>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody id="modalConfirmDatos"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-pencil me-1"></i>Corregir
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" id="btnConfirmOk">
+                        <i class="bi bi-check-circle me-1"></i>Confirmar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -226,18 +295,93 @@
             if (typeof input === 'string') input = document.getElementById(input);
             const visible = input.type === 'text';
             input.type = visible ? 'password' : 'text';
-            btn.innerHTML = visible
-                ? '<i class="bi bi-eye"></i>'
-                : '<i class="bi bi-eye-slash"></i>';
+            btn.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
         }
 
         function abrirModal(id, nombre, rol, idSucursal) {
             document.getElementById('modal_nombre_label').textContent = nombre;
-            document.getElementById('modal_rol').value = rol;
-            document.getElementById('modal_sucursal').value = idSucursal;
+            const modalRol = document.getElementById('modal_rol');
+            const modalSuc = document.getElementById('modal_sucursal');
+            if (modalRol) modalRol.value = rol;
+            if (modalSuc) modalSuc.value = idSucursal;
             document.getElementById('modal_password').value = '';
             document.getElementById('formEditarUsuario').action = `/editar_usuario/${id}`;
             new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+        }
+
+        function mostrarConfirmacion(titulo, filas, onConfirm) {
+            document.getElementById('modalConfirmTitulo').innerHTML =
+                '<i class="bi bi-clipboard-check me-2"></i>' + titulo;
+
+            const tbody = document.getElementById('modalConfirmDatos');
+            tbody.innerHTML = filas.map(([label, valor]) => `
+                <tr>
+                    <td class="text-muted fw-bold" style="width:40%">${label}</td>
+                    <td class="fw-semibold">${valor}</td>
+                </tr>
+            `).join('');
+
+            const btnOk = document.getElementById('btnConfirmOk');
+            // Clonar el botón para limpiar listeners anteriores
+            const nuevoBtn = btnOk.cloneNode(true);
+            btnOk.parentNode.replaceChild(nuevoBtn, btnOk);
+            nuevoBtn.addEventListener('click', () => {
+                bootstrap.Modal.getInstance(document.getElementById('modalConfirmacion')).hide();
+                onConfirm();
+            });
+
+            // Si viene del modal de editar, ocultarlo primero
+            const modalEditar = bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario'));
+            if (modalEditar) modalEditar.hide();
+
+            setTimeout(() => {
+                new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
+            }, modalEditar ? 300 : 0);
+        }
+
+        function confirmarCrear() {
+            const form = document.querySelector('form[action*="agregar_usuario"]');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+
+            const nombre  = form.querySelector('[name="nombre_usuario"]').value;
+            const rolEl   = form.querySelector('[name="rol"]');
+            const rol     = rolEl.tagName === 'SELECT'
+                            ? rolEl.options[rolEl.selectedIndex].text
+                            : rolEl.value;
+            const sucEl   = form.querySelector('[name="id_sucursal"]');
+            const suc     = sucEl.tagName === 'SELECT'
+                            ? sucEl.options[sucEl.selectedIndex].text
+                            : sucEl.value;
+
+            mostrarConfirmacion('Confirmar nuevo usuario', [
+                ['Usuario',   nombre],
+                ['Contraseña','••••••••'],
+                ['Rol',       rol],
+                ['Sucursal',  suc],
+            ], () => form.submit());
+        }
+
+        function confirmarEditar() {
+            const form    = document.getElementById('formEditarUsuario');
+            const nombre  = document.getElementById('modal_nombre_label').textContent;
+            const rolEl   = document.getElementById('modal_rol');
+            const rol     = rolEl
+                            ? rolEl.options[rolEl.selectedIndex].text
+                            : 'Farmacéutico';
+            const sucEl   = document.getElementById('modal_sucursal');
+            const suc     = sucEl
+                            ? sucEl.options[sucEl.selectedIndex].text
+                            : document.querySelector('#modalEditarUsuario [name="id_sucursal"]').value;
+            const pwd     = document.getElementById('modal_password').value;
+
+            const filas = [
+                ['Usuario',    nombre],
+                ['Rol',        rol],
+                ['Sucursal',   suc],
+                ['Contraseña', pwd ? '(se actualizará)' : '(sin cambios)'],
+            ];
+
+            mostrarConfirmacion('Confirmar cambios', filas, () => form.submit());
         }
     </script>
 </body>

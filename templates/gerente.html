@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Gerente - Select Salud</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root { --primary-dark: #2c3e50; --accent-blue: #3498db; --bg-light: #f4f7f6; }
+        body { background-color: var(--bg-light); font-family: 'Segoe UI', sans-serif; min-height: 100vh; margin: 0; }
+        .navbar { background-color: var(--primary-dark) !important; padding: 15px 0; border-bottom: 4px solid var(--accent-blue); }
+        .header-section { text-align: center; margin-top: 50px; margin-bottom: 50px; }
+        .header-section h1 { color: var(--primary-dark); font-weight: 800; letter-spacing: -1px; }
+        .card-menu { background: white; border: none; border-radius: 20px; padding: 35px 25px; color: #333; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03); }
+        .card-menu:hover { transform: translateY(-12px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+        .card-menu:hover .icon-wrap { background-color: var(--accent-blue); color: white; }
+        .icon-wrap { font-size: 2.2rem; width: 70px; height: 70px; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; background-color: #eaf4fb; color: var(--accent-blue); transition: all 0.3s ease; }
+        h4 { color: var(--primary-dark); font-weight: 700; margin-bottom: 15px; }
+        .text-muted { font-size: 0.9rem; line-height: 1.4; }
+        .sucursal-badge { background: rgba(52,152,219,0.12); border: 1px solid rgba(52,152,219,0.3); color: #2980b9; border-radius: 30px; padding: 5px 16px; font-size: 0.85rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark shadow">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-hospital-fill fs-5"></i> SELECT SALUD
+            </a>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <span class="text-light d-none d-md-inline">
+                    <i class="bi bi-person-circle me-1"></i>Bienvenido, <strong>{{ nombre }}</strong>
+                </span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
+                    <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-section">
+            <h1>Panel de Gerente</h1>
+            <p class="text-secondary mb-3">Gestión completa de tu sucursal</p>
+            <span class="sucursal-badge">
+                <i class="bi bi-geo-alt-fill me-1"></i>{{ session.get('sucursal_nombre', 'Tu Sucursal') }}
+            </span>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-3">
+                <div class="card card-menu text-center"
+                     onclick="location.href='{{ url_for('inventario.ver_inventario') }}'">
+                    <div class="icon-wrap"><i class="bi bi-clipboard2-data"></i></div>
+                    <h4>Inventario</h4>
+                    <p class="text-muted">Consulta stock y valor de mercancía de tu sucursal.</p>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-menu text-center"
+                     onclick="location.href='{{ url_for('ventas.index') }}'">
+                    <div class="icon-wrap"><i class="bi bi-cart3"></i></div>
+                    <h4>Hacer Venta</h4>
+                    <p class="text-muted">Registra ventas en tu sucursal.</p>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-menu text-center"
+                     onclick="location.href='{{ url_for('ventas.ver_ventas') }}'">
+                    <div class="icon-wrap"><i class="bi bi-graph-up-arrow"></i></div>
+                    <h4>Historial</h4>
+                    <p class="text-muted">Reportes de tickets y facturación de tu sucursal.</p>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-menu text-center"
+                     onclick="location.href='{{ url_for('catalogo.ver_catalogo') }}'">
+                    <div class="icon-wrap"><i class="bi bi-box-seam"></i></div>
+                    <h4>Catálogo</h4>
+                    <p class="text-muted">Registra lotes y revisa alertas de tu sucursal.</p>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-menu text-center"
+                     onclick="location.href='{{ url_for('usuarios.ver_usuarios') }}'">
+                    <div class="icon-wrap"><i class="bi bi-people"></i></div>
+                    <h4>Gestión de Usuarios</h4>
+                    <p class="text-muted">Administra los farmacéuticos de tu sucursal.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,8 +1,17 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request
 from database import get_db_connection
+from config import SUCURSAL_ID
 
 catalogo_bp = Blueprint('catalogo', __name__)
 
+
+def _acceso_catalogo():
+    """Admin y Gerente pueden entrar. Farmacéutico no."""
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    if session.get('rol') not in ('Administrador', 'Gerente'):
+        return redirect(url_for('ventas.index'))
+    return None
 
 def _solo_admin():
     if 'user_id' not in session:
@@ -14,8 +23,11 @@ def _solo_admin():
 
 @catalogo_bp.route('/catalogo')
 def ver_catalogo():
-    redir = _solo_admin()
+    redir = _acceso_catalogo()
     if redir: return redir
+
+    rol    = session.get('rol')
+    id_suc = session.get('id_sucursal_user')
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -29,7 +41,17 @@ def ver_catalogo():
     cur.execute("SELECT id_producto, nombre FROM productos ORDER BY nombre ASC")
     lista_productos = cur.fetchall()
 
-    cur.execute("SELECT mensaje, fecha_alerta FROM alertas_inventario ORDER BY fecha_alerta DESC LIMIT 5")
+    # Alertas: Gerente solo ve las de su sucursal
+    if rol == 'Gerente':
+        cur.execute("""
+            SELECT a.mensaje, a.fecha_alerta
+            FROM alertas_inventario a
+            JOIN lotes l ON a.id_lote = l.id_lote
+            WHERE l.id_sucursal = %s
+            ORDER BY a.fecha_alerta DESC LIMIT 5
+        """, (id_suc,))
+    else:
+        cur.execute("SELECT mensaje, fecha_alerta FROM alertas_inventario ORDER BY fecha_alerta DESC LIMIT 5")
     alertas = cur.fetchall()
 
     cur.close()
@@ -39,11 +61,13 @@ def ver_catalogo():
                            lista_categorias=lista_categorias,
                            lista_sucursales=lista_sucursales,
                            lista_productos=lista_productos,
-                           alertas=alertas)
+                           alertas=alertas,
+                           es_gerente=(rol == 'Gerente'))
 
 
 @catalogo_bp.route('/agregar_producto', methods=['POST'])
 def agregar_producto():
+    # Solo Administrador puede crear productos globales
     redir = _solo_admin()
     if redir: return redir
 
@@ -72,8 +96,15 @@ def agregar_producto():
 
 @catalogo_bp.route('/agregar_lote', methods=['POST'])
 def agregar_lote():
-    redir = _solo_admin()
+    redir = _acceso_catalogo()
     if redir: return redir
+
+    rol    = session.get('rol')
+    id_suc = request.form.get('id_sucursal')
+
+    # Gerente: forzar que el lote sea de su sucursal
+    if rol == 'Gerente':
+        id_suc = str(session.get('id_sucursal_user'))
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -83,7 +114,7 @@ def agregar_lote():
                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             (
                 request.form.get('id_producto'),
-                request.form.get('id_sucursal'),
+                id_suc,
                 request.form.get('codigo'),
                 request.form.get('fecha_caducidad'),
                 request.form.get('cantidad'),

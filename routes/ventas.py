@@ -4,8 +4,11 @@ from datetime import date, timedelta
 
 ventas_bp = Blueprint('ventas', __name__)
 
+# Roles que solo ven su sucursal
+ROLES_SUCURSAL = ('Farmaceutico', 'Gerente')
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+
+# ── Helpers ───────────────────────────────────────────────────
 
 def _sucursal_label_y_query_venta(cur, base_query):
     if session.get('rol') == 'Administrador':
@@ -24,7 +27,7 @@ def _sucursal_label_y_query_venta(cur, base_query):
     return sucursal_f, cur.fetchall()
 
 
-# ── Rutas ─────────────────────────────────────────────────────────────────────
+# ── Rutas ─────────────────────────────────────────────────────
 
 @ventas_bp.route('/')
 def index():
@@ -167,7 +170,6 @@ def ver_ventas():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
-    # Filtros desde la URL
     ticket_filtro   = request.args.get('ticket', '').strip()
     producto_filtro = request.args.get('producto', '').strip()
     vendedor_filtro = request.args.get('vendedor', '').strip()
@@ -189,32 +191,24 @@ def ver_ventas():
     '''
     params = []
 
-    # Restricción por rol
-    if session.get('rol') != 'Administrador':
+    # Farmacéutico y Gerente: solo su sucursal
+    if session.get('rol') in ROLES_SUCURSAL:
         query += " AND v.id_sucursal = %s"
         params.append(session['id_sucursal_user'])
 
-    # Filtro por No. Ticket
     if ticket_filtro:
         query += " AND CAST(v.id_venta AS TEXT) ILIKE %s"
         params.append(f"%{ticket_filtro}%")
-
-    # Filtro por producto
     if producto_filtro:
         query += " AND p.nombre ILIKE %s"
         params.append(f"%{producto_filtro}%")
-
-    # Filtro por vendedor
     if vendedor_filtro:
         query += " AND u.nombre_usuario ILIKE %s"
         params.append(f"%{vendedor_filtro}%")
-
-    # Filtro por sucursal (solo admin)
     if sucursal_filtro and session.get('rol') == 'Administrador':
         query += " AND s.nombre_sucursal ILIKE %s"
         params.append(f"%{sucursal_filtro}%")
 
-    # Filtro por período
     hoy = date.today()
     if periodo_filtro == 'hoy':
         query += " AND v.fecha_hora::date = %s"
@@ -236,7 +230,6 @@ def ver_ventas():
     cur.execute(query, params)
     ventas_maestro = cur.fetchall()
 
-    # Listado de sucursales y vendedores para los selects
     cur.execute("SELECT nombre_sucursal FROM sucursales ORDER BY nombre_sucursal")
     listado_sucursales = [s[0] for s in cur.fetchall()]
 
