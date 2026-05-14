@@ -12,17 +12,20 @@
         .btn-admin-back { background-color: #ffffff; color: #2c3e50; border: 2px solid #3498db; border-radius: 30px; font-weight: 600; padding: 8px 20px; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
         .btn-admin-back:hover { background-color: #3498db; color: white; transform: translateX(-5px); }
         .card-venta { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .critical-stock { background-color: #fff5f5 !important; color: #c0392b !important; }
+        .expired { color: #e74c3c; font-weight: bold; text-decoration: underline; }
+        .table-carrito { background-color: #f8fbff; border-radius: 10px; }
         .sticky-cart { position: sticky; top: 20px; }
 
         /* Estados de lote */
-        tr.lote-preferente { background-color: #f0fff4; }
+        tr.lote-preferente  { background-color: #f0fff4; }
         tr.lote-advertencia { background-color: #fffbea; }
         tr.lote-bloqueado   { background-color: #fff0f0; opacity: 0.75; }
         .badge-preferente   { background-color: #27ae60; }
         .badge-advertencia  { background-color: #f39c12; }
         .badge-bloqueado    { background-color: #e74c3c; }
 
-        /* Buscador escáner */
+        /* Scanner */
         .scanner-box { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 14px 18px; margin-bottom: 20px; border-left: 4px solid #3498db; }
         .scan-result-item { cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: background 0.15s; }
         .scan-result-item:hover { background: #eaf4ff; }
@@ -57,6 +60,7 @@
             <i class="bi bi-graph-up-arrow me-1"></i> Modulo: Venta
         </span>
         {% endif %}
+        
     </div>
 
     <div class="header-custom d-flex justify-content-between align-items-center shadow">
@@ -73,37 +77,39 @@
 
     <div class="row g-4">
         <div class="col-lg-8">
-
-            <!-- ── Buscador / Escáner ── -->
+            <!-- Scanner -->
             <div class="scanner-box">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <i class="bi bi-upc-scan fs-5 text-primary"></i>
-                    <span class="fw-bold text-primary">Escáner / Buscador de Lote</span>
-                    <small class="text-muted ms-1">— escanea el código de barras o escribe el nombre/lote</small>
+                    <span class="fw-bold text-primary">Escaner / Buscador de Lote</span>
+                    <small class="text-muted ms-1">- escanea el codigo de barras o escribe nombre/lote</small>
                 </div>
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" id="inputScanner" class="form-control"
-                           placeholder="Escanea o escribe código de lote / nombre de producto..."
-                           autocomplete="off" autofocus>
-                    <button class="btn btn-outline-secondary" onclick="document.getElementById('inputScanner').value=''; document.getElementById('scanResultados').innerHTML=''; document.getElementById('scan-feedback').style.display='none';">
+                           placeholder="Escanea o escribe codigo de lote / nombre de producto..."
+                           autocomplete="off">
+                    <button class="btn btn-outline-secondary" onclick="document.getElementById('inputScanner').value='';document.getElementById('scanResultados').innerHTML='';document.getElementById('scan-feedback').style.display='none';">
                         <i class="bi bi-x"></i>
                     </button>
                 </div>
-                <!-- Feedback de agregado al carrito -->
                 <div id="scan-feedback" class="alert alert-success py-2 mt-2 mb-0 small fw-bold"></div>
-                <!-- Resultados -->
                 <div id="scanResultados" class="mt-2"></div>
             </div>
 
-            <!-- ── Tabla de lotes ── -->
             <div class="card card-venta p-4 mb-5">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="text-primary mb-0"><i class="bi bi-capsule me-2"></i>Existencias por Lote</h4>
-                    <div class="d-flex gap-2 small">
-                        <span class="badge badge-preferente text-white px-2 py-1"><i class="bi bi-star-fill me-1"></i>Preferente</span>
-                        <span class="badge badge-advertencia text-white px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Advertencia</span>
-                        <span class="badge badge-bloqueado text-white px-2 py-1"><i class="bi bi-slash-circle-fill me-1"></i>Bloqueado</span>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <div class="d-flex gap-2 small">
+                            <span class="badge badge-preferente text-white px-2 py-1"><i class="bi bi-star-fill me-1"></i>Preferente</span>
+                            <span class="badge badge-advertencia text-white px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Advertencia</span>
+                            <span class="badge badge-bloqueado text-white px-2 py-1"><i class="bi bi-slash-circle-fill me-1"></i>Bloqueado</span>
+                        </div>
+                        <button id="btnToggleOcultos" class="btn btn-outline-secondary btn-sm rounded-pill"
+                                onclick="toggleOcultos()">
+                            <i class="bi bi-eye me-1"></i><span id="btnToggleLabel">Ver todos los lotes</span>
+                        </button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -122,7 +128,7 @@
                         <tbody>
                             {% for p in productos %}
                             {# p[7]=estado  p[8]=razon  p[9]=sugerencia #}
-                            <tr class="lote-{{ p[7] }}">
+                            <tr class="lote-{{ p[7] }} {% if p[7] != 'preferente' %}lote-oculto d-none{% endif %}">
                                 <td>
                                     <span class="fw-bold">{{ p[0] }}</span>
                                     {% if p[7] == 'preferente' %}
@@ -142,7 +148,7 @@
                                     {{ p[4] }}
                                     {% set dias_cad = (p[4] - hoy).days %}
                                     {% if dias_cad <= dias_bloqueo and dias_cad >= 0 %}
-                                    <br><small class="text-danger">{{ dias_cad }} día(s)</small>
+                                    <br><small class="text-danger">{{ dias_cad }} dia(s)</small>
                                     {% elif p[4] < hoy %}
                                     <br><small class="text-danger">Vencido</small>
                                     {% endif %}
@@ -159,9 +165,10 @@
                                         <input type="hidden" name="precio" value="{{ p[5] }}">
                                         <input type="hidden" name="sucursal_origen" value="{{ p[2] }}">
                                         <input type="number" name="cantidad" value="1" min="1" max="{{ p[1] }}" class="form-control form-control-sm" style="width: 65px;">
-                                        <button type="submit" class="btn {% if p[7] == 'advertencia' %}btn-warning{% else %}btn-success{% endif %} btn-sm shadow-sm"
+                                        <button type="submit"
+                                                class="btn {% if p[7] == 'advertencia' %}btn-warning{% else %}btn-success{% endif %} btn-sm shadow-sm"
                                                 {% if p[7] == 'advertencia' %}
-                                                onclick="return confirm('⚠️ Se recomienda usar primero el lote #{{ p[9] }}.\n¿Deseas agregar este de todas formas?')"
+                                                onclick="abrirModalAdvertencia(event, '{{ p[8] }}', '{{ p[9] }}', this.closest('form'))"
                                                 {% endif %}>
                                             <i class="bi bi-plus-lg"></i>
                                         </button>
@@ -176,7 +183,6 @@
             </div>
         </div>
 
-        <!-- ── Carrito ── -->
         <div class="col-lg-4">
             <div class="card card-venta shadow sticky-cart">
                 <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
@@ -184,6 +190,7 @@
                 </div>
                 <div class="card-body p-3">
                     {% if session['carrito'] %}
+
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-3" style="font-size: 0.88rem;">
                             <thead>
@@ -201,24 +208,30 @@
                                         {{ item.nombre }}
                                         <br><small class="text-muted fw-normal">${{ "{:,.2f}".format(item.precio) }} c/u</small>
                                     </td>
+
+                                    <!-- Controles de cantidad -->
                                     <td class="text-center" style="white-space: nowrap;">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
                                             <a href="{{ url_for('ventas.actualizar_cantidad', index=loop.index0, accion='menos') }}"
-                                               class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
-                                               style="width:24px; height:24px; font-size:1rem;">−</a>
+                                            class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
+                                            style="width:24px; height:24px; font-size:1rem;">−</a>
                                             <span class="fw-bold px-1">{{ item.cantidad }}</span>
                                             <a href="{{ url_for('ventas.actualizar_cantidad', index=loop.index0, accion='mas') }}"
-                                               class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
-                                               style="width:24px; height:24px; font-size:1rem;">+</a>
+                                            class="btn btn-outline-secondary btn-sm px-1 py-0 lh-1"
+                                            style="width:24px; height:24px; font-size:1rem;">+</a>
                                         </div>
                                     </td>
+
                                     <td class="text-end text-success fw-bold">
                                         ${{ "{:,.2f}".format(item.cantidad * item.precio) }}
                                     </td>
+
+                                    <!-- Eliminar fila completa -->
                                     <td class="text-center">
                                         <a href="{{ url_for('ventas.eliminar_item', index=loop.index0) }}"
-                                           class="btn btn-outline-danger btn-sm px-1 py-0"
-                                           style="width:26px; height:26px;" title="Eliminar producto">
+                                        class="btn btn-outline-danger btn-sm px-1 py-0"
+                                        style="width:26px; height:26px;"
+                                        title="Eliminar producto">
                                             <i class="bi bi-trash3" style="font-size: 0.75rem;"></i>
                                         </a>
                                     </td>
@@ -228,30 +241,31 @@
                         </table>
                     </div>
 
+                    <!-- Total -->
                     <div class="d-flex justify-content-between align-items-center px-1 mb-3">
                         <span class="fw-bold text-muted">Total:</span>
-                        {% set total = namespace(v=0) %}
-                        {% for item in session['carrito'] %}
-                        {% set total.v = total.v + (item.cantidad * item.precio) %}
-                        {% endfor %}
+                            {% set total = namespace(v=0) %}
+                            {% for item in session['carrito'] %}
+                            {% set total.v = total.v + (item.cantidad * item.precio) %}
+                            {% endfor %}
                         <span class="fw-bold text-success fs-5">${{ "{:,.2f}".format(total.v) }}</span>
                     </div>
 
+                    <!-- Sucursal -->
                     <div class="alert alert-info py-2 small mb-3">
                         <i class="bi bi-geo-alt-fill me-1"></i>Operando en:
                         <strong>{{ session['carrito'][0]['sucursal_origen'] }}</strong>
                     </div>
 
                     <div class="d-grid gap-2">
-                        <form action="{{ url_for('ventas.confirmar_venta') }}" method="POST" id="form-confirmar-venta">
-                            <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm"
-                                    data-bs-toggle="modal" data-bs-target="#modalConfirmarVenta">
-                                <i class="bi bi-check-circle me-2"></i>FINALIZAR VENTA
-                            </button>
-                        </form>
+                        <!-- Botón que abre el modal de pregunta -->
+                        <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm"
+                                data-bs-toggle="modal" data-bs-target="#modalConfirmarVenta">
+                            <i class="bi bi-check-circle me-2"></i>FINALIZAR VENTA
+                        </button>
                         <a href="{{ url_for('ventas.limpiar_carrito') }}"
-                           class="btn btn-link btn-sm text-danger text-decoration-none"
-                           onclick="return confirm('¿Vaciar todo el carrito?')">
+                        class="btn btn-link btn-sm text-danger text-decoration-none"
+                        onclick="abrirModalVaciar(event)">
                             <i class="bi bi-trash3 me-1"></i>Vaciar Carrito
                         </a>
                     </div>
@@ -267,31 +281,141 @@
         </div>
     </div>
 
-    <!-- Modal: ¿Encontró todo lo que buscaba? -->
-    <div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true">
+    <!-- Modal: Advertencia de lote no preferente -->
+    <div class="modal fade" id="modalAdvertenciaLote" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header bg-primary text-white rounded-top-4 border-0 py-3">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-warning text-dark border-0 rounded-top-4">
                     <h5 class="modal-title fw-bold">
-                        <i class="bi bi-question-circle me-2"></i>Antes de finalizar...
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Lote con advertencia
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-4 px-4">
+                    <p id="modalAdvertenciaTexto" class="mb-2"></p>
+                    <div class="alert alert-warning py-2 small mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Se recomienda vender primero el lote preferente para evitar mermas.
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning fw-bold rounded-pill px-4" id="btnConfirmarAdvertencia">
+                        <i class="bi bi-cart-plus me-1"></i>Agregar de todas formas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar vaciar carrito -->
+    <div class="modal fade" id="modalVaciarCarrito" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-danger text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-trash3-fill me-2"></i>Vaciar carrito
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center py-4">
-                    <i class="bi bi-bag-heart" style="font-size: 2.8rem; color: #2c3e50; opacity: 0.8;"></i>
-                    <p class="fs-5 fw-semibold mt-3 mb-1">¿El cliente encontró todo lo que buscaba?</p>
-                    <p class="text-muted small">Esta información nos ayuda a mejorar el servicio.</p>
+                <div class="modal-body py-3 text-center">
+                    <p class="mb-0">Se eliminaran todos los productos del carrito actual. Esta accion no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <a id="btnConfirmarVaciar" href="{{ url_for('ventas.limpiar_carrito') }}"
+                       class="btn btn-danger fw-bold rounded-pill px-4">
+                        <i class="bi bi-trash3 me-1"></i>Vaciar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Advertencia escaner (lote no preferente encontrado por escaner) -->
+    <div class="modal fade" id="modalAdvertenciaScan" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-warning text-dark border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-upc-scan me-2"></i>Lote escaneado con advertencia
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-4 px-4">
+                    <p id="modalScanTexto" class="mb-2"></p>
+                    <div class="alert alert-warning py-2 small mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Puedes agregar este lote o cancelar para buscar el preferente.
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"
+                            id="btnCancelarScan">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning fw-bold rounded-pill px-4" id="btnConfirmarScan">
+                        <i class="bi bi-cart-plus me-1"></i>Agregar de todas formas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Inconformidad (No encontró lo que buscaba) -->
+    <div class="modal fade" id="modalInconformidad" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-danger text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-emoji-frown me-2"></i>Ayúdanos a mejorar
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-4 px-4 text-center">
+                    <i class="bi bi-chat-dots" style="font-size: 2.5rem; color: #dc3545;"></i>
+                    <p class="mt-3 mb-2">
+                        Por favor, ayúdanos a mejorar nuestro servicio visitando 
+                        <a href="https://selectsalud.com/sugerencias" target="_blank" class="fw-bold text-decoration-none">
+                            selectsalud/sugerencias.com
+                        </a>
+                    </p>
+                    <p class="text-muted small">Tu opinión es muy importante para nosotros.</p>
                 </div>
                 <div class="modal-footer border-0 justify-content-center gap-3 pb-4">
-                    <button type="button" class="btn btn-success px-4 rounded-pill fw-bold shadow-sm"
-                            data-bs-dismiss="modal"
-                            onclick="document.getElementById('form-confirmar-venta').submit()">
-                        <i class="bi bi-hand-thumbs-up me-1"></i> Sí
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        Cancelar
                     </button>
-                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-bold"
-                            data-bs-dismiss="modal"
-                            onclick="document.getElementById('form-confirmar-venta').submit()">
-                        <i class="bi bi-hand-thumbs-down me-1"></i> No
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" id="btnContinuarInconformidad">
+                        <i class="bi bi-arrow-right-circle me-1"></i> Continuar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Éxito (Compra realizada correctamente) -->
+    <div class="modal fade" id="modalExito" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-success text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-check-circle-fill me-2"></i>¡Compra exitosa!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-4 px-4 text-center">
+                    <i class="bi bi-emoji-smile" style="font-size: 3rem; color: #28a745;"></i>
+                    <p class="fs-5 fw-bold mt-3 mb-1">La compra se realizó con éxito</p>
+                    <p class="text-muted">Gracias por tu preferencia.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-success rounded-pill px-5 fw-bold" data-bs-dismiss="modal" onclick="location.reload()">
+                        Aceptar
                     </button>
                 </div>
             </div>
@@ -299,45 +423,118 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal: ¿Encontró todo lo que buscaba? -->
+    <div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-labelledby="modalConfirmarVentaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white rounded-top-4 border-0 py-3">
+                    <h5 class="modal-title fw-bold" id="modalConfirmarVentaLabel">
+                        <i class="bi bi-question-circle me-2"></i>Antes de finalizar...
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-bag-heart" style="font-size: 2.8rem; color: #2c3e50; opacity: 0.8;"></i>
+                    <p class="fs-5 fw-semibold mt-3 mb-1">¿El cliente encontró todo lo que buscaba?</p>
+                    <p class="text-muted small">Esta información nos ayuda a mejorar el servicio.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-3 pb-4">
+                    <!-- Botón SÍ: realiza la venta directamente -->
+                    <button type="button" class="btn btn-success px-4 rounded-pill fw-bold shadow-sm" id="btnSiEncontro">
+                        <i class="bi bi-hand-thumbs-up me-1"></i> Sí
+                    </button>
+                    <!-- Botón NO: abre el modal de inconformidad -->
+                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-bold" id="btnNoEncontro">
+                        <i class="bi bi-hand-thumbs-down me-1"></i> No
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-    // ── Escáner / Buscador ─────────────────────────────────────────────────
+    // Toggle lotes ocultos
+    let mostrandoTodos = false;
+    function toggleOcultos() {
+        mostrandoTodos = !mostrandoTodos;
+        document.querySelectorAll('.lote-oculto').forEach(tr => {
+            tr.classList.toggle('d-none', !mostrandoTodos);
+        });
+        const label = document.getElementById('btnToggleLabel');
+        const btn   = document.getElementById('btnToggleOcultos');
+        if (mostrandoTodos) {
+            label.textContent = 'Ocultar otros lotes';
+            btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+        } else {
+            label.textContent = 'Ver todos los lotes';
+            btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+        }
+    }
+
+    // Scanner
     const inputScanner  = document.getElementById('inputScanner');
     const divResultados = document.getElementById('scanResultados');
     const feedback      = document.getElementById('scan-feedback');
-    let scanTimer       = null;
+    let scanTimer = null;
 
     inputScanner.addEventListener('input', () => {
         clearTimeout(scanTimer);
         const q = inputScanner.value.trim();
         if (!q) { divResultados.innerHTML = ''; feedback.style.display='none'; return; }
-
-        // Escáner de código de barras típicamente termina con Enter rapidísimo;
-        // si llega con Enter se maneja en keydown. Aquí esperamos 350ms para teclado manual.
         scanTimer = setTimeout(() => buscarLote(q), 350);
     });
 
     inputScanner.addEventListener('keydown', e => {
-        // Enter = confirmación de escáner de barras
         if (e.key === 'Enter') {
             e.preventDefault();
             clearTimeout(scanTimer);
             const q = inputScanner.value.trim();
-            if (q) buscarLote(q, true); // true = autoagregar si hay 1 resultado exacto
+            if (q) buscarLote(q, true);
         }
     });
 
+    // ------------------------------------------------------------------
+    // FUNCIONES DE MODALS (Advertencia, Vaciar, Scanner)
+    // ------------------------------------------------------------------
+
+    let _formPendienteAdvertencia = null;
+    function abrirModalAdvertencia(e, razon, sugerencia, form) {
+        e.preventDefault();
+        _formPendienteAdvertencia = form;
+        const texto = sugerencia ? razon + ' (Lote sugerido: #' + sugerencia + ')' : razon;
+        document.getElementById('modalAdvertenciaTexto').textContent = texto;
+        new bootstrap.Modal(document.getElementById('modalAdvertenciaLote')).show();
+    }
+
+    document.getElementById('btnConfirmarAdvertencia').addEventListener('click', () => {
+        bootstrap.Modal.getInstance(document.getElementById('modalAdvertenciaLote')).hide();
+        if (_formPendienteAdvertencia) {
+            _formPendienteAdvertencia.submit();
+            _formPendienteAdvertencia = null;
+        }
+    });
+
+    function abrirModalVaciar(e) {
+        e.preventDefault();
+        new bootstrap.Modal(document.getElementById('modalVaciarCarrito')).show();
+    }
+
     function buscarLote(q, autoAgregar = false) {
-        fetch(`/buscar_lote?q=${encodeURIComponent(q)}`)
+        fetch('/buscar_lote?q=' + encodeURIComponent(q))
             .then(r => r.json())
             .then(data => {
                 if (!data.length) {
                     divResultados.innerHTML = '<p class="text-muted small mt-1 mb-0"><i class="bi bi-search me-1"></i>Sin resultados.</p>';
                     return;
                 }
-                // Si el escáner devuelve coincidencia exacta de código → agregar directamente
                 const exacto = data.find(d => d.codigo.toLowerCase() === q.toLowerCase());
                 if (autoAgregar && exacto) {
-                    agregarAlCarrito(exacto);
+                    if (exacto.estado === 'advertencia') {
+                        abrirModalAdvertenciaScan(exacto);
+                    } else {
+                        agregarAlCarrito(exacto);
+                    }
                     return;
                 }
                 renderResultados(data);
@@ -348,20 +545,53 @@
     }
 
     function renderResultados(data) {
-        divResultados.innerHTML = data.map(d => `
+        divResultados.innerHTML = data.map(d => {
+            const badgeEstado = d.estado === 'advertencia'
+                ? `<span class="badge bg-warning text-dark me-1"><i class="bi bi-exclamation-triangle-fill"></i> Advertencia</span>`
+                : `<span class="badge bg-success me-1"><i class="bi bi-star-fill"></i> Preferente</span>`;
+            return `
             <div class="scan-result-item d-flex justify-content-between align-items-center border-bottom py-1"
-                 onclick='agregarAlCarrito(${JSON.stringify(d)})'>
+                 onclick='confirmarAgregarScan(${JSON.stringify(d)})'>
                 <div>
                     <span class="fw-bold">${d.nombre}</span>
                     <small class="text-muted ms-2">#${d.codigo}</small>
+                    <br>${badgeEstado}
+                    ${d.estado === 'advertencia' ? `<small class="text-warning">${d.razon}</small>` : ''}
                 </div>
                 <div class="text-end">
                     <span class="badge bg-dark me-1">Stock: ${d.stock}</span>
                     <span class="badge bg-success">$${d.precio.toFixed(2)}</span>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
+
+    function confirmarAgregarScan(prod) {
+        if (prod.estado === 'advertencia') {
+            abrirModalAdvertenciaScan(prod);
+        } else {
+            agregarAlCarrito(prod);
+        }
+    }
+
+    let _prodPendienteScan = null;
+    function abrirModalAdvertenciaScan(prod) {
+        _prodPendienteScan = prod;
+        document.getElementById('modalScanTexto').textContent = prod.razon;
+        new bootstrap.Modal(document.getElementById('modalAdvertenciaScan')).show();
+    }
+
+    document.getElementById('btnConfirmarScan').addEventListener('click', () => {
+        bootstrap.Modal.getInstance(document.getElementById('modalAdvertenciaScan')).hide();
+        if (_prodPendienteScan) {
+            agregarAlCarrito(_prodPendienteScan);
+            _prodPendienteScan = null;
+        }
+    });
+
+    document.getElementById('btnCancelarScan').addEventListener('click', () => {
+        inputScanner.focus();
+    });
 
     function agregarAlCarrito(prod) {
         fetch('/agregar_carrito_scan', {
@@ -372,27 +602,105 @@
                 nombre:   prod.nombre,
                 precio:   prod.precio,
                 sucursal: prod.sucursal,
-                cantidad: 1,
+                cantidad: 1
             })
         })
         .then(r => r.json())
         .then(res => {
             if (res.ok) {
-                feedback.textContent = `✓ ${prod.nombre} (#${prod.codigo}) agregado al carrito`;
+                feedback.textContent   = prod.nombre + ' (#' + prod.codigo + ') agregado al carrito';
+                feedback.className     = 'alert alert-success py-2 mt-2 mb-0 small fw-bold';
                 feedback.style.display = 'block';
                 divResultados.innerHTML = '';
                 inputScanner.value = '';
                 inputScanner.focus();
                 setTimeout(() => { feedback.style.display = 'none'; }, 2500);
-                // Recargar carrito sin recargar página completa
                 setTimeout(() => location.reload(), 600);
             } else if (res.error === 'sucursal_mismatch') {
-                feedback.textContent = '⚠️ El producto es de otra sucursal. Vacía el carrito primero.';
-                feedback.className   = 'alert alert-warning py-2 mt-2 mb-0 small fw-bold';
+                feedback.textContent   = 'El producto es de otra sucursal. Vacia el carrito primero.';
+                feedback.className     = 'alert alert-warning py-2 mt-2 mb-0 small fw-bold';
                 feedback.style.display = 'block';
             }
         });
     }
+
+    // ------------------------------------------------------------------
+    // NUEVA LÓGICA: Procesar venta (SÍ o Continuar después de NO)
+    // ------------------------------------------------------------------
+
+    // Referencias a los modales
+    const modalConfirmarVentaEl = document.getElementById('modalConfirmarVenta');
+    const modalConfirmarVenta = new bootstrap.Modal(modalConfirmarVentaEl);
+    const modalInconformidadEl = document.getElementById('modalInconformidad');
+    const modalInconformidad = new bootstrap.Modal(modalInconformidadEl);
+    const modalExitoEl = document.getElementById('modalExito');
+    const modalExito = new bootstrap.Modal(modalExitoEl);
+
+    // Función que envía la venta al servidor mediante Fetch
+    function procesarVenta() {
+        // Mostrar indicador de carga (opcional, se puede deshabilitar botones)
+        const btnSi = document.getElementById('btnSiEncontro');
+        const btnContinuar = document.getElementById('btnContinuarInconformidad');
+        if (btnSi) btnSi.disabled = true;
+        if (btnContinuar) btnContinuar.disabled = true;
+
+        fetch("{{ url_for('ventas.confirmar_venta') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'  // Para que el servidor sepa que es AJAX si lo necesita
+            },
+            // No enviamos cuerpo porque el carrito está en sesión
+        })
+        .then(response => {
+            // Si la respuesta no es ok (error 4xx o 5xx), lanzamos error
+            if (!response.ok) {
+                throw new Error('Error en el servidor');
+            }
+            // Intentamos parsear como JSON (asumiendo que el backend devuelve {success: true})
+            return response.json().catch(() => {
+                // Si no es JSON pero la respuesta fue ok, asumimos éxito (por si devuelve HTML de redirección)
+                return { success: true };
+            });
+        })
+        .then(data => {
+            if (data.success === false) {
+                throw new Error(data.message || 'Error al procesar la venta');
+            }
+            // Éxito: cerrar modales abiertos y mostrar modal de éxito
+            modalConfirmarVenta.hide();
+            modalInconformidad.hide();
+            modalExito.show();
+        })
+        .catch(error => {
+            console.error('Error en venta:', error);
+            alert('Ocurrió un error al finalizar la venta. Por favor intenta de nuevo.');
+            // Reactivar botones en caso de error
+            if (btnSi) btnSi.disabled = false;
+            if (btnContinuar) btnContinuar.disabled = false;
+        });
+    }
+
+    // Evento para botón "Sí"
+    document.getElementById('btnSiEncontro').addEventListener('click', () => {
+        procesarVenta();
+    });
+
+    // Evento para botón "No": cierra el primer modal y abre el de inconformidad
+    document.getElementById('btnNoEncontro').addEventListener('click', () => {
+        modalConfirmarVenta.hide();
+        modalInconformidad.show();
+    });
+
+    // Evento para botón "Continuar" en el modal de inconformidad
+    document.getElementById('btnContinuarInconformidad').addEventListener('click', () => {
+        procesarVenta();
+    });
+
+    // Asegurar que al cerrar el modal de éxito se recargue la página (opcional)
+    modalExitoEl.addEventListener('hidden.bs.modal', function () {
+        location.reload();
+    });
     </script>
 </body>
 </html>

@@ -1,31 +1,15 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request
 from database import get_db_connection
-from config import SUCURSAL_ID
+from utils.decorators import roles_required
 
 catalogo_bp = Blueprint('catalogo', __name__)
 
 
-def _acceso_catalogo():
-    """Admin y Gerente pueden entrar. Farmacéutico no."""
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    if session.get('rol') not in ('Administrador', 'Gerente'):
-        return redirect(url_for('ventas.index'))
-    return None
-
-def _solo_admin():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    if session.get('rol') != 'Administrador':
-        return redirect(url_for('ventas.index'))
-    return None
-
+# ── Catálogo ──────────────────────────────────────────────────
 
 @catalogo_bp.route('/catalogo')
+@roles_required('Administrador', 'Gerente')
 def ver_catalogo():
-    redir = _acceso_catalogo()
-    if redir: return redir
-
     rol    = session.get('rol')
     id_suc = session.get('id_sucursal_user')
 
@@ -65,12 +49,11 @@ def ver_catalogo():
                            es_gerente=(rol == 'Gerente'))
 
 
-@catalogo_bp.route('/agregar_producto', methods=['POST'])
-def agregar_producto():
-    # Solo Administrador puede crear productos globales
-    redir = _solo_admin()
-    if redir: return redir
+# ── Agregar producto (solo Admin) ─────────────────────────────
 
+@catalogo_bp.route('/agregar_producto', methods=['POST'])
+@roles_required('Administrador')
+def agregar_producto():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
@@ -94,11 +77,11 @@ def agregar_producto():
     return redirect(url_for('catalogo.ver_catalogo'))
 
 
-@catalogo_bp.route('/agregar_lote', methods=['POST'])
-def agregar_lote():
-    redir = _acceso_catalogo()
-    if redir: return redir
+# ── Agregar lote ──────────────────────────────────────────────
 
+@catalogo_bp.route('/agregar_lote', methods=['POST'])
+@roles_required('Administrador', 'Gerente')
+def agregar_lote():
     rol    = session.get('rol')
     id_suc = request.form.get('id_sucursal')
 

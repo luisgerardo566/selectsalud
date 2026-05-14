@@ -1,46 +1,30 @@
 from flask import Blueprint, render_template, redirect, url_for, session
+from utils.decorators import login_required, roles_required
 
 admin_bp = Blueprint('admin', __name__)
-
-
-def _requiere_admin():
-    if 'user_id' not in session or session.get('rol') != 'Administrador':
-        return redirect(url_for('auth.login'))
-    return None
-
-def _requiere_admin_o_gerente():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    if session.get('rol') not in ('Administrador', 'Gerente'):
-        return redirect(url_for('ventas.index'))
-    return None
 
 
 # ── Dashboard Administrador ───────────────────────────────────
 
 @admin_bp.route('/admin_dashboard')
+@roles_required('Administrador', redirect_to='auth.login')
 def dashboard():
-    redir = _requiere_admin()
-    if redir: return redir
     return render_template('admin.html', nombre=session['nombre'])
 
 
 # ── Dashboard Gerente ─────────────────────────────────────────
 
 @admin_bp.route('/gerente_dashboard')
+@roles_required('Gerente', redirect_to='auth.login')
 def gerente_dashboard():
-    if 'user_id' not in session or session.get('rol') != 'Gerente':
-        return redirect(url_for('auth.login'))
     return render_template('gerente.html', nombre=session['nombre'])
 
 
-# ── Selector de sucursal (solo Administrador) ─────────────────
+# ── Selector de sucursal ──────────────────────────────────────
 
 @admin_bp.route('/selector/<tipo_flujo>')
+@login_required
 def mostrar_selector(tipo_flujo):
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-
     rol = session.get('rol')
 
     # Farmacéutico y Gerente: saltar selector, ir directo
@@ -55,10 +39,8 @@ def mostrar_selector(tipo_flujo):
 
 
 @admin_bp.route('/ir_a_tabla/<modo>/<sucursal>')
+@roles_required('Administrador', redirect_to='auth.login')
 def ir_a_tabla(modo, sucursal):
-    redir = _requiere_admin()
-    if redir: return redir
-
     session['sucursal_seleccionada'] = sucursal
     session['carrito'] = []
     session.modified = True

@@ -22,6 +22,7 @@ def login():
 
         conn = get_db_connection()
         cur  = conn.cursor()
+        """MÁS ABURRIDA"""
         cur.execute(
             'SELECT id_usuario, nombre_usuario, password_hash, rol, id_sucursal '
             'FROM usuarios WHERE nombre_usuario = %s',
