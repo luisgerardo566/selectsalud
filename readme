@@ -1,0 +1,8 @@
+# 1. Clonar o descargar el proyecto
+# 2. Instalar dependencias
+pip install -r requirements.txt
+
+# 3. Copiar el .env de ejemplo y rellenar con los valores reales
+cp .env.example .env
+
+# 4. Correr la app
