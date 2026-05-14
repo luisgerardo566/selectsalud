@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db_connection
 
 usuarios_bp = Blueprint('usuarios', __name__)
@@ -30,7 +30,7 @@ def ver_usuarios():
             SELECT u.id_usuario, u.nombre_usuario, u.rol, s.nombre_sucursal, u.id_sucursal
             FROM usuarios u
             JOIN sucursales s ON u.id_sucursal = s.id_sucursal
-            WHERE u.rol = 'Farmaceutico' AND u.id_sucursal = %s
+            WHERE u.rol IN ('Farmaceutico','Gerente') AND u.id_sucursal = %s
             ORDER BY u.nombre_usuario ASC
         ''', (id_suc,))
     else:
@@ -147,6 +147,108 @@ def editar_usuario(id_usuario):
         conn.close()
 
     return redirect(url_for('usuarios.ver_usuarios'))
+
+
+@usuarios_bp.route('/verificar_password_actual', methods=['POST'])
+def verificar_password_actual():
+    """Valida la contraseña del usuario en sesión antes de aplicar cambio de contraseña."""
+    import json
+    redir = _acceso_usuarios()
+    if redir: return redir
+
+    pw_actual  = request.form.get('pw_actual', '').strip()
+    id_destino = request.form.get('id_usuario_destino', '').strip()
+    rol_nuevo  = request.form.get('rol', '').strip()
+    id_suc     = request.form.get('id_sucursal', '').strip()
+    nueva_pw   = request.form.get('nueva_password', '').strip()
+
+    # Verificar contraseña del usuario en sesión
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT password_hash FROM usuarios WHERE id_usuario = %s", (session['user_id'],))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row or not check_password_hash(row[0], pw_actual):
+        return redirect(url_for('usuarios.ver_usuarios',
+                                error_pw='1', target=id_destino))
+
+    # Contraseña correcta → redirigir al editar con los datos
+    conn = get_db_connection()
+    cur = conn.cursor()
+    rol_sesion = session.get('rol')
+    if rol_sesion == 'Gerente':
+        rol_nuevo = 'Farmaceutico'
+        id_suc    = str(session.get('id_sucursal_user'))
+    try:
+        cur.execute(
+            "UPDATE usuarios SET rol = %s, id_sucursal = %s WHERE id_usuario = %s",
+            (rol_nuevo, id_suc, id_destino)
+        )
+        if nueva_pw:
+            hashed = generate_password_hash(nueva_pw, method='scrypt')
+            cur.execute(
+                "UPDATE usuarios SET password_hash = %s WHERE id_usuario = %s",
+                (hashed, id_destino)
+            )
+        conn.commit()
+    except Exception as e:
+        print(f"❌ Error al editar usuario (verificado): {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for('usuarios.ver_usuarios', exito_pw='1'))
+
+
+@usuarios_bp.route('/verificar_password_eliminar/<int:id_usuario>', methods=['POST'])
+def verificar_password_eliminar(id_usuario):
+    redir = _acceso_usuarios()
+    if redir: return redir
+
+    if id_usuario == session.get('user_id'):
+        return redirect(url_for('usuarios.ver_usuarios'))
+
+    pw_actual = request.form.get('pw_actual_eliminar', '').strip()
+
+    # Verificar contraseña del usuario en sesión
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT password_hash FROM usuarios WHERE id_usuario = %s", (session['user_id'],))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row or not check_password_hash(row[0], pw_actual):
+        return redirect(url_for('usuarios.ver_usuarios', error_eliminar='1'))
+
+    # Contraseña correcta → verificar permisos y eliminar
+    rol_sesion = session.get('rol')
+    if rol_sesion == 'Gerente':
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT rol, id_sucursal FROM usuarios WHERE id_usuario = %s", (id_usuario,))
+        target = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not target or target[0] != 'Farmaceutico' or target[1] != session.get('id_sucursal_user'):
+            return redirect(url_for('usuarios.ver_usuarios'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM usuarios WHERE id_usuario = %s", (id_usuario,))
+        conn.commit()
+    except Exception as e:
+        print(f"❌ Error al eliminar usuario verificado: {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for('usuarios.ver_usuarios', exito_eliminar='1'))
 
 
 @usuarios_bp.route('/eliminar_usuario/<int:id_usuario>', methods=['POST'])

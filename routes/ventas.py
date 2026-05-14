@@ -1,11 +1,14 @@
-from flask import Blueprint, render_template, redirect, url_for, session, request
+from flask import Blueprint, render_template, redirect, url_for, session, request, jsonify
 from database import get_db_connection, get_nombre_sucursal
 from datetime import date, timedelta
+from collections import defaultdict
 
 ventas_bp = Blueprint('ventas', __name__)
 
-# Roles que solo ven su sucursal
 ROLES_SUCURSAL = ('Farmaceutico', 'Gerente')
+
+# Días antes de caducidad en que el lote queda BLOQUEADO para venta
+DIAS_BLOQUEO_CADUCIDAD = 30
 
 
 # ── Helpers ───────────────────────────────────────────────────
@@ -23,8 +26,56 @@ def _sucursal_label_y_query_venta(cur, base_query):
     else:
         sucursal_f = get_nombre_sucursal(session['id_sucursal_user'])
         cur.execute(base_query + " AND l.id_sucursal = %s", (session['id_sucursal_user'],))
-
     return sucursal_f, cur.fetchall()
+
+
+def _clasificar_productos(productos, hoy):
+    """
+    Enriquece cada lote con (estado, razon, sugerencia):
+      - preferente : lote ideal para vender (sin bloqueo, con menos stock del producto)
+      - advertencia: existe otro lote del mismo producto más urgente
+      - bloqueado  : caduca en <= DIAS_BLOQUEO_CADUCIDAD días, no se puede agregar al carrito
+    """
+    limite_bloqueo = hoy + timedelta(days=DIAS_BLOQUEO_CADUCIDAD)
+
+    grupos = defaultdict(list)
+    for p in productos:
+        grupos[p[0]].append(p)
+
+    # Lote preferente por producto = el de menor stock entre los no bloqueados
+    preferente_por_producto = {}
+    for nombre, lotes in grupos.items():
+        candidatos = [l for l in lotes if l[4] > limite_bloqueo]
+        if candidatos:
+            preferente_por_producto[nombre] = min(candidatos, key=lambda x: x[1])[3]  # id_lote
+
+    resultado = []
+    for p in productos:
+        nombre, stock, sucursal, id_lote, fecha_cad, precio, cod_lote = p
+        dias = (fecha_cad - hoy).days
+
+        if fecha_cad <= limite_bloqueo:
+            estado     = 'bloqueado'
+            razon      = f'Caduca en {dias} día(s) — no apto para venta'
+            pref_id    = preferente_por_producto.get(nombre)
+            sugerencia = next((x[6] for x in grupos[nombre] if x[3] == pref_id), '') if pref_id else ''
+        elif id_lote != preferente_por_producto.get(nombre) and nombre in preferente_por_producto:
+            pref_id    = preferente_por_producto[nombre]
+            sug_cod    = next((x[6] for x in grupos[nombre] if x[3] == pref_id), '')
+            estado     = 'advertencia'
+            razon      = f'Usar primero el lote #{sug_cod} (tiene menos stock)'
+            sugerencia = sug_cod
+        else:
+            estado     = 'preferente'
+            razon      = ''
+            sugerencia = ''
+
+        resultado.append(p + (estado, razon, sugerencia))
+
+    orden = {'preferente': 0, 'advertencia': 1, 'bloqueado': 2}
+    # Ordenar: por producto asc, luego estado, luego stock asc
+    resultado.sort(key=lambda x: (x[0], orden[x[7]], x[1]))
+    return resultado
 
 
 # ── Rutas ─────────────────────────────────────────────────────
@@ -46,15 +97,73 @@ def index():
         WHERE l.stock_actual > 0
     '''
 
-    sucursal_f, productos = _sucursal_label_y_query_venta(cur, base_query)
+    sucursal_f, productos_raw = _sucursal_label_y_query_venta(cur, base_query)
     cur.close()
     conn.close()
+
+    hoy = date.today()
+    productos = _clasificar_productos(productos_raw, hoy)
 
     return render_template('index.html',
                            productos=productos,
                            sucursal=sucursal_f,
                            nombre=session.get('nombre'),
-                           hoy=date.today())
+                           hoy=hoy,
+                           dias_bloqueo=DIAS_BLOQUEO_CADUCIDAD)
+
+
+@ventas_bp.route('/buscar_lote')
+def buscar_lote():
+    """Endpoint para el escáner de código de barras y buscador manual."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'no auth'}), 401
+
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify([])
+
+    hoy    = date.today()
+    limite = hoy + timedelta(days=DIAS_BLOQUEO_CADUCIDAD)
+
+    extra  = ''
+    params = [limite, f'%{q}%', f'%{q}%']
+
+    if session.get('rol') != 'Administrador':
+        extra = 'AND l.id_sucursal = %s'
+        params.append(session['id_sucursal_user'])
+    elif session.get('sucursal_seleccionada', 'General') != 'General':
+        extra = 'AND s.nombre_sucursal ILIKE %s'
+        params.append(f"%{session['sucursal_seleccionada']}%")
+
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    cur.execute(f'''
+        SELECT p.nombre, l.stock_actual, s.nombre_sucursal, l.id_lote,
+               l.fecha_caducidad::text, p.precio_venta, l.codigo_lote
+        FROM productos p
+        JOIN lotes l ON p.id_producto = l.id_producto
+        JOIN sucursales s ON l.id_sucursal = s.id_sucursal
+        WHERE l.stock_actual > 0
+          AND l.fecha_caducidad > %s
+          AND (l.codigo_lote ILIKE %s OR p.nombre ILIKE %s)
+          {extra}
+        ORDER BY l.stock_actual ASC
+        LIMIT 10
+    ''', params)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return jsonify([{
+        'nombre':    r[0],
+        'stock':     r[1],
+        'sucursal':  r[2],
+        'id_lote':   r[3],
+        'caducidad': r[4],
+        'precio':    float(r[5]),
+        'codigo':    r[6],
+    } for r in rows])
 
 
 @ventas_bp.route('/agregar_carrito/<int:lote_id>', methods=['POST'])
@@ -62,9 +171,22 @@ def agregar_carrito(lote_id):
     if 'carrito' not in session:
         session['carrito'] = []
 
-    carrito = session['carrito']
+    # Bloquear lotes próximos a caducar también desde el backend
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    cur.execute("SELECT fecha_caducidad FROM lotes WHERE id_lote = %s", (lote_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row:
+        dias = (row[0] - date.today()).days
+        if dias <= DIAS_BLOQUEO_CADUCIDAD:
+            return redirect(url_for('ventas.index'))
+
+    carrito            = session['carrito']
     sucursal_real_lote = request.form.get('sucursal_origen')
-    cantidad_nueva = int(request.form.get('cantidad', 1))
+    cantidad_nueva     = int(request.form.get('cantidad', 1))
 
     if carrito and carrito[0].get('sucursal_origen') != sucursal_real_lote:
         return redirect(url_for('ventas.index'))
@@ -73,7 +195,7 @@ def agregar_carrito(lote_id):
         if item['lote_id'] == lote_id:
             item['cantidad'] += cantidad_nueva
             session['carrito'] = carrito
-            session.modified = True
+            session.modified   = True
             return redirect(url_for('ventas.index'))
 
     carrito.append({
@@ -84,8 +206,47 @@ def agregar_carrito(lote_id):
         'sucursal_origen': sucursal_real_lote,
     })
     session['carrito'] = carrito
-    session.modified = True
+    session.modified   = True
     return redirect(url_for('ventas.index'))
+
+
+@ventas_bp.route('/agregar_carrito_scan', methods=['POST'])
+def agregar_carrito_scan():
+    """Agrega al carrito desde el escáner (JSON)."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'no auth'}), 401
+
+    data       = request.get_json()
+    lote_id    = data.get('id_lote')
+    nombre     = data.get('nombre')
+    precio     = float(data.get('precio', 0))
+    sucursal   = data.get('sucursal')
+    cantidad   = int(data.get('cantidad', 1))
+
+    if 'carrito' not in session:
+        session['carrito'] = []
+
+    carrito = session['carrito']
+    if carrito and carrito[0].get('sucursal_origen') != sucursal:
+        return jsonify({'error': 'sucursal_mismatch'}), 400
+
+    for item in carrito:
+        if item['lote_id'] == lote_id:
+            item['cantidad'] += cantidad
+            session['carrito'] = carrito
+            session.modified   = True
+            return jsonify({'ok': True, 'cantidad': item['cantidad']})
+
+    carrito.append({
+        'lote_id':         lote_id,
+        'nombre':          nombre,
+        'cantidad':        cantidad,
+        'precio':          precio,
+        'sucursal_origen': sucursal,
+    })
+    session['carrito'] = carrito
+    session.modified   = True
+    return jsonify({'ok': True, 'cantidad': cantidad})
 
 
 @ventas_bp.route('/actualizar_cantidad/<int:index>/<accion>')
@@ -99,7 +260,7 @@ def actualizar_cantidad(index, accion):
             if carrito[index]['cantidad'] <= 0:
                 carrito.pop(index)
         session['carrito'] = carrito
-        session.modified = True
+        session.modified   = True
     return redirect(url_for('ventas.index'))
 
 
@@ -109,14 +270,14 @@ def eliminar_item(index):
     if 0 <= index < len(carrito):
         carrito.pop(index)
         session['carrito'] = carrito
-        session.modified = True
+        session.modified   = True
     return redirect(url_for('ventas.index'))
 
 
 @ventas_bp.route('/limpiar_carrito')
 def limpiar_carrito():
     session['carrito'] = []
-    session.modified = True
+    session.modified   = True
     return redirect(url_for('ventas.index'))
 
 
@@ -127,13 +288,13 @@ def confirmar_venta():
         return redirect(url_for('ventas.index'))
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
     try:
         cur.execute(
             "SELECT id_sucursal FROM sucursales WHERE nombre_sucursal = %s",
             (session.get('sucursal_seleccionada'),)
         )
-        res = cur.fetchone()
+        res    = cur.fetchone()
         suc_id = res[0] if res else session['id_sucursal_user']
 
         total_v = sum(item['precio'] * item['cantidad'] for item in carrito)
@@ -157,7 +318,7 @@ def confirmar_venta():
         session.pop('carrito', None)
     except Exception as e:
         conn.rollback()
-        print(f"❌ Error en venta: {e}")
+        print(f"Error en venta: {e}")
     finally:
         cur.close()
         conn.close()
@@ -177,7 +338,7 @@ def ver_ventas():
     periodo_filtro  = request.args.get('periodo', '').strip()
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     query = '''
         SELECT DISTINCT v.id_venta, v.fecha_hora, u.nombre_usuario, s.nombre_sucursal, v.total
@@ -191,7 +352,6 @@ def ver_ventas():
     '''
     params = []
 
-    # Farmacéutico y Gerente: solo su sucursal
     if session.get('rol') in ROLES_SUCURSAL:
         query += " AND v.id_sucursal = %s"
         params.append(session['id_sucursal_user'])
@@ -251,7 +411,7 @@ def venta_detalle(id_venta):
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
     cur.execute('''
         SELECT p.nombre, dv.cantidad, dv.precio_unitario,
                (dv.cantidad * dv.precio_unitario) AS subtotal, p.formula
@@ -261,11 +421,11 @@ def venta_detalle(id_venta):
         WHERE dv.id_venta = %s
     ''', (id_venta,))
 
-    detalles = cur.fetchall()
+    detalles    = cur.fetchall()
     total_venta = sum(f[3] for f in detalles)
-
     cur.close()
     conn.close()
+
     return render_template('detalle_modal.html',
                            detalles=detalles,
                            id_venta=id_venta,

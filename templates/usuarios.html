@@ -25,6 +25,34 @@
 </head>
 <body class="container">
 
+    {% if request.args.get('error_pw') == '1' %}
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-shield-x me-2"></i><strong>Contraseña incorrecta.</strong> No se aplicaron los cambios.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if request.args.get('exito_pw') == '1' %}
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><strong>Cambio hecho con éxito.</strong> La contraseña fue actualizada correctamente.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if request.args.get('error_eliminar') == '1' %}
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-shield-x me-2"></i><strong>Contraseña incorrecta.</strong> No se eliminó al usuario.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if request.args.get('exito_eliminar') == '1' %}
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><strong>Usuario eliminado correctamente.</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
     <div class="d-flex justify-content-between align-items-center py-3">
         {% if es_gerente %}
         <a href="{{ url_for('admin.gerente_dashboard') }}" class="btn-admin-back shadow-sm">
@@ -167,12 +195,10 @@
                                             <i class="bi bi-pencil-square me-1"></i>Editar
                                         </button>
                                         {% if u[0] != session.get('user_id') %}
-                                        <form action="{{ url_for('usuarios.eliminar_usuario', id_usuario=u[0]) }}" method="POST"
-                                              onsubmit="return confirm('¿Eliminar al usuario {{ u[1] }}? Esta acción no se puede deshacer.')">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold">
-                                                <i class="bi bi-trash3 me-1"></i>Eliminar
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold"
+                                                onclick="pedirPwEliminar('{{ u[0] }}', '{{ u[1] }}')">
+                                            <i class="bi bi-trash3 me-1"></i>Eliminar
+                                        </button>
                                         {% else %}
                                         <span class="badge bg-secondary px-3 py-2">
                                             <i class="bi bi-person-check me-1"></i>Tú
@@ -278,13 +304,95 @@
                     </table>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" id="btnCorregir">
                         <i class="bi bi-pencil me-1"></i>Corregir
                     </button>
                     <button type="button" class="btn btn-primary fw-bold px-4" id="btnConfirmOk">
                         <i class="bi bi-check-circle me-1"></i>Confirmar
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Verificar contraseña para ELIMINAR usuario -->
+    <div class="modal fade" id="modalVerificarPwEliminar" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-danger text-white border-0" style="border-radius:15px 15px 0 0">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-shield-lock me-2"></i>Confirma tu identidad
+                    </h6>
+                </div>
+                <form id="formEliminarVerificado" action="" method="POST">
+                    <div class="modal-body px-4 pt-3 pb-2">
+                        <p class="small text-muted mb-1">Estás a punto de eliminar a:</p>
+                        <p class="fw-bold text-danger mb-3" id="vpe_nombre_usuario"></p>
+                        <p class="small text-muted mb-2">Ingresa <strong>tu contraseña</strong> para confirmar.</p>
+                        <div class="input-group">
+                            <input type="password" name="pw_actual_eliminar" id="inputPwEliminar"
+                                   class="form-control" placeholder="Tu contraseña" required>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="togglePwEliminar(this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                data-bs-dismiss="modal">
+                            <i class="bi bi-x me-1"></i>Cancelar
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm fw-bold px-3"
+                                onclick="submitEliminar()">
+                            <i class="bi bi-trash3 me-1"></i>Eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Verificar contraseña del usuario en sesión -->
+    <div class="modal fade" id="modalVerificarPw" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-warning text-dark border-0" style="border-radius:15px 15px 0 0">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-shield-lock me-2"></i>Confirma tu identidad
+                    </h6>
+                </div>
+                <form id="formVerificarPw" action="{{ url_for('usuarios.verificar_password_actual') }}" method="POST">
+                    <input type="hidden" name="id_usuario_destino" id="vp_id_usuario">
+                    <input type="hidden" name="rol"                id="vp_rol">
+                    <input type="hidden" name="id_sucursal"        id="vp_id_sucursal">
+                    <input type="hidden" name="nueva_password"     id="vp_nueva_password">
+                    <div class="modal-body px-4 pt-3 pb-2">
+                        <p class="small text-muted mb-3">
+                            Ingresa <strong>tu contraseña actual</strong> para aplicar el cambio de contraseña.
+                        </p>
+                        <div class="input-group">
+                            <input type="password" name="pw_actual" id="inputPwActual"
+                                   class="form-control" placeholder="Tu contraseña" required autofocus>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="togglePwActual(this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div id="errorPwActual" class="text-danger small mt-2 d-none">
+                            <i class="bi bi-x-circle me-1"></i>Contraseña incorrecta, intenta de nuevo.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelarPw">
+                            <i class="bi bi-arrow-left me-1"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">
+                            <i class="bi bi-check-circle me-1"></i>Verificar
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -330,13 +438,29 @@
                 onConfirm();
             });
 
-            // Si viene del modal de editar, ocultarlo primero
-            const modalEditar = bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario'));
+            // Si viene del modal de editar, ocultarlo primero y guardar referencia
+            const modalEditarEl = document.getElementById('modalEditarUsuario');
+            const modalEditar = bootstrap.Modal.getInstance(modalEditarEl);
+            const esEdicion = !!modalEditar;
             if (modalEditar) modalEditar.hide();
 
-            setTimeout(() => {
-                new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
-            }, modalEditar ? 300 : 0);
+            const modalConfEl = document.getElementById('modalConfirmacion');
+            const bsModalConf = new bootstrap.Modal(modalConfEl);
+
+            // Reasignar botón Corregir
+            const btnCorregir = document.getElementById('btnCorregir');
+            const nuevoCorregir = btnCorregir.cloneNode(true);
+            btnCorregir.parentNode.replaceChild(nuevoCorregir, btnCorregir);
+            nuevoCorregir.addEventListener('click', () => {
+                bsModalConf.hide();
+                if (esEdicion) {
+                    modalConfEl.addEventListener('hidden.bs.modal', () => {
+                        new bootstrap.Modal(modalEditarEl).show();
+                    }, { once: true });
+                }
+            });
+
+            setTimeout(() => bsModalConf.show(), esEdicion ? 300 : 0);
         }
 
         function confirmarCrear() {
@@ -383,6 +507,94 @@
 
             mostrarConfirmacion('Confirmar cambios', filas, () => form.submit());
         }
+
+        // Interceptar confirmarEditar: si hay nueva contraseña, pedir verificación
+        const _confirmarEditarOriginal = confirmarEditar;
+        confirmarEditar = function() {
+            const pwd = document.getElementById('modal_password').value;
+            if (pwd) {
+                // Primero mostrar el modal de confirmación de datos
+                // y luego al confirmar, abrir el de contraseña
+                _solicitarVerificacion();
+            } else {
+                _confirmarEditarOriginal();
+            }
+        };
+
+        function _solicitarVerificacion() {
+            // Recolectar datos del form de edición
+            const form    = document.getElementById('formEditarUsuario');
+            const nombre  = document.getElementById('modal_nombre_label').textContent;
+            const rolEl   = document.getElementById('modal_rol');
+            const rol     = rolEl ? rolEl.options[rolEl.selectedIndex].text : 'Farmacéutico';
+            const sucEl   = document.getElementById('modal_sucursal');
+            const suc     = sucEl ? sucEl.options[sucEl.selectedIndex].text : '';
+            const pwd     = document.getElementById('modal_password').value;
+
+            // Extraer id_usuario de la action del form
+            const actionUrl = form.action;
+            const idUsuario = actionUrl.split('/').pop();
+
+            const filas = [
+                ['Usuario',    nombre],
+                ['Rol',        rol],
+                ['Sucursal',   suc],
+                ['Contraseña', '(se actualizará)'],
+            ];
+
+            // Mostrar modal de confirmación de datos primero
+            mostrarConfirmacion('Confirmar cambios', filas, () => {
+                // Al confirmar datos → poblar hidden inputs y abrir modal de contraseña
+                document.getElementById('vp_id_usuario').value    = idUsuario;
+                document.getElementById('vp_rol').value           = rolEl ? rolEl.value : '';
+                document.getElementById('vp_id_sucursal').value   = sucEl ? sucEl.value : '';
+                document.getElementById('vp_nueva_password').value = pwd;
+                document.getElementById('inputPwActual').value    = '';
+                document.getElementById('errorPwActual').classList.add('d-none');
+
+                setTimeout(() => {
+                    new bootstrap.Modal(document.getElementById('modalVerificarPw')).show();
+                }, 300);
+            });
+        }
+
+        // Botón cancelar en modal de contraseña → volver al modal de edición
+        document.getElementById('btnCancelarPw').addEventListener('click', () => {
+            bootstrap.Modal.getInstance(document.getElementById('modalVerificarPw')).hide();
+            document.getElementById('modalVerificarPw').addEventListener('hidden.bs.modal', () => {
+                new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+            }, { once: true });
+        });
+
+        // Mostrar/ocultar contraseña actual
+        function togglePwActual(btn) {
+            const input = document.getElementById('inputPwActual');
+            const visible = input.type === 'text';
+            input.type = visible ? 'password' : 'text';
+            btn.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+        }
+
+        function pedirPwEliminar(idUsuario, nombreUsuario) {
+            document.getElementById('vpe_nombre_usuario').textContent = nombreUsuario;
+            document.getElementById('formEliminarVerificado').action =
+                '/verificar_password_eliminar/' + idUsuario;
+            document.getElementById('inputPwEliminar').value = '';
+            new bootstrap.Modal(document.getElementById('modalVerificarPwEliminar')).show();
+        }
+
+        function submitEliminar() {
+            const input = document.getElementById('inputPwEliminar');
+            if (!input.value.trim()) { input.focus(); return; }
+            document.getElementById('formEliminarVerificado').submit();
+        }
+
+        function togglePwEliminar(btn) {
+            const input = document.getElementById('inputPwEliminar');
+            const visible = input.type === 'text';
+            input.type = visible ? 'password' : 'text';
+            btn.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+        }
+
     </script>
 </body>
 </html>
