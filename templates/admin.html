@@ -21,21 +21,30 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark shadow">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
-                <i class="bi bi-hospital-fill fs-5"></i> SELECT SALUD
+<nav class="navbar navbar-expand-lg navbar-dark shadow" style="background-color: #2c3e50; border-bottom: 4px solid #3498db;">
+    <div class="container">
+        <div class="navbar-brand fw-bold d-flex align-items-center gap-2">
+    <img src="{{ url_for('static', filename='img/selectsalud2.png') }}" 
+         alt="Logo SELECT SALUD" 
+         style="height: 40px; 
+                width: auto;
+                /* ESTA ES LA MAGIA DEL BRILLO */
+                filter: drop-shadow(0 0 8px rgba(52, 152, 219, 0.9));">
+    
+    
+</div>
+
+        <div class="ms-auto d-flex align-items-center gap-3">
+            <span class="text-light d-none d-md-inline">
+                <i class="bi bi-person-circle me-1"></i>Bienvenido, <strong>{{ nombre }}</strong>
+            </span>
+            
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
+                <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
             </a>
-            <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-light d-none d-md-inline">
-                    <i class="bi bi-person-circle me-1"></i>Bienvenido, <strong>{{ nombre }}</strong>
-                </span>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm px-4 rounded-pill fw-bold shadow-sm">
-                    <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
-                </a>
-            </div>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <div class="container">
         <div class="header-section">
