@@ -1,7 +1,11 @@
 from datetime import timedelta
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Carga las variables desde .env
 
 # ── App ───────────────────────────────────────────────────────
-SECRET_KEY = 'select_salud_v2_2026_final'
+SECRET_KEY = os.getenv('SECRET_KEY')
 PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
 
 # ── Sucursal configurada en esta instalación ──────────────────
@@ -15,9 +19,9 @@ SUCURSAL_ID = 3
 # Los roles rol_monitoreo y rol_desarrollador están disponibles
 # para conectarse directamente desde DBeaver/pgAdmin.
 DB_CONN_STR = (
-    "host='aws-1-us-east-1.pooler.supabase.com' "
-    "port='5432' "
-    "dbname='postgres' "
-    "user='postgres.rwvvlmzaoeglnwodgdql' "
-    "password='Axvze7k7Op.'"
+    f"host='{os.getenv('DB_HOST')}' "
+    f"port='{os.getenv('DB_PORT')}' "
+    f"dbname='{os.getenv('DB_NAME')}' "
+    f"user='{os.getenv('DB_USER')}' "
+    f"password='{os.getenv('DB_PASSWORD')}'"
 )
